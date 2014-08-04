@@ -1,0 +1,14 @@
+domains: [project.ld, de.project.ld, en.project.ld, admin.project.ld]
+project_root: /home/user/projects/project
+web_root: magento
+run_code_mapping: [
+	"de.project.ld store_de",
+	"en.project.ld store_en",
+]
+country_code_mapping: [
+	"de.project.ld de",
+	"en.project.ld en",
+]
+varnish_host: http://project.ld:7002
+cdn_host_remote: images.yourcdn.com
+cdn_host_local: cdn.project.ld

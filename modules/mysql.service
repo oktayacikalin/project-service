@@ -1,0 +1,170 @@
+#!/bin/bash
+
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
+[ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
+. "${SERVICE_DIR}/service.conf"
+
+[ -z "$MYSQL_HOST" ] && MYSQL_HOST="project.ld"
+[ -z "$MYSQL_PORT" ] && MYSQL_PORT=4002
+[ -z "$MYSQL_USER" ] && MYSQL_USER="root"
+[ -z "$MYSQL_PASS" ] && MYSQL_PASS="root"
+[ -z "$MYSQL_SOCKET" ] && MYSQL_SOCKET="${PID_DIR}/mysqld.sock"
+[ -z "$MYSQL_PID" ] && MYSQL_PID="${PID_DIR}/mysqld.pid"
+[ -z "$MYSQL_DATA_DIR" ] && MYSQL_DATA_DIR="${VAR_DIR}/lib/mysql"
+[ -z "$MYSQL_ERROR_LOG" ] && MYSQL_ERROR_LOG="${LOG_DIR}/mysql-error.log"
+[ -z "$MYSQL_CONF" ] && MYSQL_CONF="${MYSQL_DATA_DIR}/mysql.conf"
+[ -z "$MYSQL_ADMIN_CONF" ] && MYSQL_ADMIN_CONF="${MYSQL_DATA_DIR}/mysql-admin.conf"
+
+SERVICE_LOG_FILE="$MYSQL_ERROR_LOG"
+
+mkdir -p "$(dirname ${MYSQL_SOCKET})"
+mkdir -p "${MYSQL_DATA_DIR}"
+mkdir -p "$(dirname ${MYSQL_ERROR_LOG})"
+
+cat > ${MYSQL_CONF} <<EOT
+[client]
+port = ${MYSQL_PORT}
+socket = ${MYSQL_SOCKET}
+
+[mysqld_safe]
+socket = ${MYSQL_SOCKET}
+# syslog
+
+[mysqld]
+port = ${MYSQL_PORT}
+socket = ${MYSQL_SOCKET}
+pid-file = ${MYSQL_PID}
+basedir = /usr
+datadir = ${MYSQL_DATA_DIR}
+plugin-dir = /usr/lib/mysql/plugin
+log-error = ${MYSQL_ERROR_LOG}
+bind-address = ${MYSQL_HOST}
+key_buffer = 16M
+max_allowed_packet = 16M
+thread_stack = 192K
+thread_cache_size = 8
+myisam-recover = BACKUP
+query_cache_limit = 1M
+query_cache_size = 16M
+expire_logs_days = 10
+max_binlog_size = 100M
+# --- OKTAY BEGIN ---
+default_storage_engine  = InnoDB
+innodb_log_file_size   = 50M
+innodb_buffer_pool_size = 512M #256M
+innodb_additional_mem_pool_size = 2048M
+innodb_log_buffer_size  = 128M #8M
+innodb_file_per_table   = 1
+innodb_open_files       = 400
+innodb_io_capacity      = 400
+innodb_flush_method     = O_DIRECT
+innodb_flush_log_at_trx_commit=0
+binlog_format = MIXED
+#server_audit_output_type = SYSLOG
+#server_audit_events = 'CONNECT,QUERY,TABLE'
+#server_audit_logging = on
+#query_cache_limit = 4M
+#query_cache_size = 64M
+#sort_buffer_size = 4M
+#read_rnd_buffer_size = 1M
+#tmp_table_size = 128M
+#max_heap_table_size = 32M
+#table_cache = 800
+# --- OKTAY END ---
+
+[mysqldump]
+quick
+quote-names
+max_allowed_packet = 16M
+
+[mysql]
+#no-auto-rehash # faster start of mysql but no tab completition
+
+[isamchk]
+key_buffer = 16M
+EOT
+
+cat > ${MYSQL_ADMIN_CONF} <<EOT
+[client]
+#host = ${MYSQL_HOST}
+port = ${MYSQL_PORT}
+user = ${MYSQL_USER}
+password = ${MYSQL_PASS}
+socket = ${MYSQL_SOCKET}
+protocol = socket
+
+[mysql_upgrade]
+#host = ${MYSQL_HOST}
+port = ${MYSQL_PORT}
+user = ${MYSQL_USER}
+password = ${MYSQL_PASS}
+socket = ${MYSQL_SOCKET}
+protocol = socket
+basedir = /usr
+EOT
+
+function wait () {
+    while true; do
+        [ -f "$MYSQL_PID" ] && {
+            local pid=$(cat ${MYSQL_PID})
+            local proc=$(ps xaww | grep -v grep | grep mysqld | grep ${pid})
+            [ "$proc" ] && break
+        }
+        sleep 1
+    done
+}
+
+case "$1" in
+    'bootstrap')
+        mysql_install_db --defaults-file="${MYSQL_CONF}"
+        $0 start
+        wait
+        mysqladmin --defaults-file="${MYSQL_CONF}" -u "${MYSQL_USER}" password "${MYSQL_PASS}"
+        # mysqladmin --defaults-file="${MYSQL_CONF}" -h localhost -u "${MYSQL_USER}" password "${MYSQL_PASS}"
+    ;;
+
+    'start')
+        start-stop-daemon --start --quiet --pidfile "$MYSQL_PID" --chdir "$BASE_DIR" --background --exec /usr/sbin/mysqld \
+            --test \
+            || exit 97
+        start-stop-daemon --start --pidfile "$MYSQL_PID" --chdir "$BASE_DIR" --background --exec /usr/sbin/mysqld \
+            -- --defaults-file="${MYSQL_CONF}"
+    ;;
+
+    'stop')
+        start-stop-daemon --stop --pidfile "$MYSQL_PID" --retry 30
+        RETVAL="$?"
+        [ "$RETVAL" = 2 ] && exit 2
+        [ "$RETVAL" = 1 ] && exit 98
+        rm -f ${MYSQL_PID}
+        exit "$RETVAL"
+    ;;
+
+    'restart')
+        $0 stop
+        RETVAL=$?
+        if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+            $0 start
+        else
+            exit "$RETVAL"
+        fi
+    ;;
+
+    'mysql-shell')
+        echo  # Put the prompt into a new line.
+        mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}"
+    ;;
+
+    'NOOP')
+        # NOOP
+    ;;
+
+    *)
+        exit 99
+    ;;
+esac

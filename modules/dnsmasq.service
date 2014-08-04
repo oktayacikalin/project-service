@@ -1,0 +1,95 @@
+#!/bin/bash
+
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
+[ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
+. "${SERVICE_DIR}/service.conf"
+
+[ -z "$DNSMASQ_CONF_NAME" ] && {
+    DNSMASQ_CONF_NAME=$(sed 's![^a-zA-Z0-9]!_!g' <<< "$(basename ${BASE_DIR})")
+}
+[ -z "$DNSMASQ_HOSTS" ] && DNSMASQ_HOSTS="${BASE_DIR}/etc/dnsmasq/hosts"
+[ -z "$DNSMASQ_CONF" ] && DNSMASQ_CONF="${VAR_DIR}/lib/dnsmasq/dnsmasq.conf"
+[ -z "$DNSMASQ_CONF_DIR" ] && DNSMASQ_CONF_DIR="/etc/dnsmasq.d"
+
+SERVICE_LOG_FILE="${LOG_DIR}/dnsmasq.log"
+
+DNSMASQ_CONF_FILE="$DNSMASQ_CONF_DIR/$DNSMASQ_CONF_NAME"
+
+mkdir -p "${VAR_DIR}/lib/dnsmasq"
+
+cat > ${DNSMASQ_CONF} <<EOT
+addn-hosts=$DNSMASQ_HOSTS
+EOT
+
+case "$1" in
+    'install')
+        [ ! -e "$DNSMASQ_CONF_FILE" ] && {
+            sudo ln -sv "$DNSMASQ_CONF" "$DNSMASQ_CONF_FILE"
+            sudo service dnsmasq force-reload
+        } || {
+            exit 97  # NOOP
+        }
+    ;;
+
+    'uninstall')
+        [ -e "$DNSMASQ_CONF_FILE" ] && {
+            sudo rm -v "$DNSMASQ_CONF_FILE"
+            sudo service dnsmasq force-reload
+        } || {
+            exit 98  # NOOP
+        }
+    ;;
+
+    'reinstall')
+        $0 uninstall
+        RETVAL=$?
+        if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+            $0 install
+        else
+            exit "$RETVAL"
+        fi
+    ;;
+
+    'start')
+        [ -e "$DNSMASQ_CONF_FILE" ] && {
+            exit 97  # NOOP
+        } || {
+            $0 install
+        }
+    ;;
+
+    'stop')
+        exit 98  # NOOP
+    ;;
+
+    'restart')
+        $0 stop
+        RETVAL=$?
+        if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+            $0 start
+        else
+            exit "$RETVAL"
+        fi
+    ;;
+
+    'reload')
+        [ -e "$DNSMASQ_CONF_FILE" ] && {
+            sudo service dnsmasq force-reload
+        } || {
+            $0 install
+        }
+    ;;
+
+    'NOOP')
+        # NOOP
+    ;;
+
+    *)
+        exit 99
+    ;;
+esac

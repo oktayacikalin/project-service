@@ -1,0 +1,78 @@
+#!/bin/bash
+
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
+[ -z "$SERVICE_DIR" ] && {
+    SERVICE_DIR=$(readlink -f $(dirname $0))
+    . "${SERVICE_DIR}/service.conf"
+}
+
+[ -z "$SOLR_HOME" ] && SOLR_HOME="${BASE_DIR}/solr"
+[ -z "$SOLR_HOST" ] && SOLR_HOST="project.ld"
+[ -z "$SOLR_PORT" ] && SOLR_PORT="9002"
+[ -z "$SOLR_PID" ] && SOLR_PID="${PID_DIR}/solr"
+[ -z "$SOLR_LOGS" ] && SOLR_LOGS="${LOG_DIR}/solr"
+export JETTY_HOME="$SOLR_HOME"
+export JETTY_HOST="$SOLR_HOST"
+export JETTY_PORT="$SOLR_PORT"
+export JETTY_RUN="$SOLR_PID"
+export JETTY_LOGS="$SOLR_LOGS"
+
+SERVICE_LOG_DIR="$SOLR_LOGS"
+
+mkdir -p "${SOLR_PID}" "${SOLR_LOGS}"
+
+case "$1" in
+    'start')
+        result=$("${BASE_DIR}/etc/init.d/jetty-3.6.2" start)
+        RETVAL="$?"
+        grep --quiet -i 'process already running' <<< "$result" && {
+            exit 97
+        } || {
+            [ "$RETVAL" != 0 ] && {
+                echo "$result"
+            }
+            exit "$RETVAL"
+        }
+    ;;
+
+    'stop')
+        result=$("${BASE_DIR}/etc/init.d/jetty-3.6.2" stop)
+        RETVAL="$?"
+        grep --quiet -i 'no process in pidfile' <<< "$result" && {
+            exit 98
+        } || {
+            [ "$RETVAL" != 0 ] && {
+                echo "$result"
+            }
+            exit "$RETVAL"
+        }
+    ;;
+
+    'restart')
+        $0 stop
+        RETVAL=$?
+        if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+            $0 start
+        else
+            exit "$RETVAL"
+        fi
+    ;;
+
+    'clear-cache')
+        # TODO flush solr cache instead of restart.
+        $0 restart
+    ;;
+
+    'NOOP')
+        # NOOP
+    ;;
+
+    *)
+        exit 99
+    ;;
+esac

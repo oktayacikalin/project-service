@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
+[ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
+. "${SERVICE_DIR}/service.conf"
+
+[ -z "$NGINX_DAEMON" ] && NGINX_DAEMON="/usr/sbin/nginx"
+[ -z "$NGINX_CONFIG" ] && NGINX_CONFIG="etc/nginx/nginx.conf"
+[ -z "$NGINX_PID" ] && NGINX_PID="${PID_DIR}/nginx.pid"
+[ -z "$NGINX_PARAMS" ] && NGINX_PARAMS="user ${USER};"
+
+TIMEOUT=30
+
+SERVICE_LOG_DIR="${LOG_DIR}/nginx"
+
+mkdir -p "${BASE_DIR}/var/lib/nginx" "${LOG_DIR}/nginx"
+mkdir -p "${BASE_DIR}/var/cache/nginx"
+
+case "$1" in
+    'start')
+        sudo start-stop-daemon --start --quiet --pidfile "${NGINX_PID}" --chdir "$BASE_DIR" --exec "${NGINX_DAEMON}" \
+            --test \
+            || exit 97
+        sudo start-stop-daemon --start --quiet --pidfile "${NGINX_PID}" --chdir "$BASE_DIR" --exec "${NGINX_DAEMON}" \
+            -- -p "${BASE_DIR}" -c "${NGINX_CONFIG}" -g "$NGINX_PARAMS" \
+            || exit 2
+    ;;
+
+    'stop')
+        sudo start-stop-daemon --stop --quiet --retry=TERM/$TIMEOUT/KILL/5 --pidfile "${NGINX_PID}" --name "nginx"
+        RETVAL="$?"
+        [ "$RETVAL" = 2 ] && exit 2
+        [ "$RETVAL" = 1 ] && exit 98
+        rm -f ${NGINX_PID}
+        exit "$RETVAL"
+    ;;
+
+    'restart')
+        $0 stop
+        RETVAL=$?
+        if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+            $0 start
+        else
+            exit "$RETVAL"
+        fi
+    ;;
+
+    'reload')
+        sudo start-stop-daemon --stop --signal HUP --quiet --pidfile "${NGINX_PID}" --name "nginx"
+    ;;
+
+    'test')
+        sudo "${NGINX_DAEMON}" -p "${BASE_DIR}" -c "${NGINX_CONFIG}" -g "$NGINX_PARAMS" -t
+    ;;
+
+    'clear-cache')
+        rm -rf "${BASE_DIR}/var/cache/nginx/*"
+    ;;
+
+    'NOOP')
+        # NOOP
+    ;;
+
+    *)
+        exit 99
+    ;;
+esac

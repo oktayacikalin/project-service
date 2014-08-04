@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
+[ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
+. "${SERVICE_DIR}/service.conf"
+
+[ -z "$REDIS_PID" ] && REDIS_PID="${PID_DIR}/redis.pid"
+[ -z "$REDIS_HOST" ] && REDIS_HOST="project.ld"
+[ -z "$REDIS_PORT" ] && REDIS_PORT="6002"
+[ -z "$REDIS_LOG" ] && REDIS_LOG="${LOG_DIR}/redis.log"
+[ -z "$REDIS_CONFIG" ] && REDIS_CONFIG="
+daemonize yes
+pidfile \"$REDIS_PID\"
+bind $REDIS_HOST
+port $REDIS_PORT
+logfile \"$REDIS_LOG\"
+dir \"${BASE_DIR}/var/lib/redis\"
+"
+
+SERVICE_LOG_FILE="$REDIS_LOG"
+
+mkdir -p "${BASE_DIR}/var/lib/redis"
+
+EXEC="${BASE_DIR}/bin/redis-server"
+CLIEXEC="${BASE_DIR}/bin/redis-cli"
+
+case "$1" in
+    'start')
+        if [ -f "$REDIS_PID" ]
+        then
+                # TODO test if PID is running and don't complain.
+                # echo "$REDIS_PID exists, process is already running or crashed"
+                exit 97
+        else
+                # echo "Starting Redis server..."
+                echo "$REDIS_CONFIG" | $EXEC -
+        fi
+    ;;
+
+    'stop')
+        if [ ! -f "$REDIS_PID" ]
+        then
+                # echo "$REDIS_PID does not exist, process is not running"
+                exit 98
+        else
+                PID=$(cat "$REDIS_PID")
+                # echo "Stopping ..."
+                $CLIEXEC -h $REDIS_HOST -p $REDIS_PORT shutdown
+                while [ -x /proc/${PID} ]
+                do
+                    echo "Waiting for Redis to shutdown ..."
+                    sleep 1
+                done
+                # echo "Redis stopped"
+        fi
+    ;;
+
+    'restart')
+        $0 stop
+        RETVAL=$?
+        if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+            $0 start
+        else
+            exit "$RETVAL"
+        fi
+    ;;
+
+    'clear-cache')
+        $CLIEXEC -h $REDIS_HOST -p $REDIS_PORT flushall
+    ;;
+
+    'redis-shell')
+        echo  # Put the prompt into a new line.
+        $CLIEXEC -h $REDIS_HOST -p $REDIS_PORT
+    ;;
+
+    'NOOP')
+        # NOOP
+    ;;
+
+    *)
+        exit 99
+    ;;
+esac

@@ -1,0 +1,35 @@
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
+# See http://nginx.com/resources/admin-guide/caching/
+# See http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_cache
+proxy_cache_path {{project_root}}/var/cache/nginx/cdn keys_zone=cdn:32m;
+
+server {
+    listen {{cdn_host_local}}:80;
+    listen {{cdn_host_local}}:443 ssl spdy;
+    server_name {{cdn_host_local}};
+
+    ssl_certificate     {{project_root}}/etc/ssl/server.crt;
+    ssl_certificate_key {{project_root}}/etc/ssl/server.key;
+
+    access_log {{project_root}}/var/log/nginx/cdn.access.log;
+    error_log  {{project_root}}/var/log/nginx/cdn.error.log;
+
+    location / {
+        proxy_cache cdn;
+        # proxy_cache_key "$host$request_uri$cookie_user";
+        proxy_cache_valid 404 503 0;
+        proxy_cache_use_stale  error timeout invalid_header updating
+                               http_500 http_502 http_503 http_504;
+        # proxy_cache_bypass $cookie_nocache $arg_nocache$arg_comment;
+        # proxy_no_cache $http_pragma $http_authorization;
+
+        proxy_set_header Host {{cdn_host_remote}};
+        proxy_pass http://{{cdn_host_remote}};
+    }
+
+}

@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
+[ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
+. "${SERVICE_DIR}/service.conf"
+
+SERVICE_LOG_FILE="/var/log/syslog"
+SERVICE_IS_ACTIVE=0
+
+case "$1" in
+    'NOOP')
+        # NOOP
+    ;;
+
+    *)
+        exit 99
+    ;;
+esac

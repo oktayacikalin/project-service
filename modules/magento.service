@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
+[ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
+. "${SERVICE_DIR}/service.conf"
+
+[ -z "$MAGENTO_HOME" ] && MAGENTO_HOME="${BASE_DIR}/shop"
+
+SERVICE_LOG_DIR="${MAGENTO_HOME}/var/log"
+
+case "$1" in
+    'clear-cache')
+        pushd "${MAGENTO_HOME}" > /dev/null
+        php shell/cache.php flush
+        popd > /dev/null
+    ;;
+
+    'magerun')
+        cd "${MAGENTO_HOME}" && magerun ${2-}
+    ;;
+
+    'magerun-shell')
+        echo  # Put the prompt into a new line.
+        cd "${MAGENTO_HOME}" && magerun shell
+    ;;
+
+    'NOOP')
+        # NOOP
+    ;;
+
+    *)
+        exit 99
+    ;;
+esac
