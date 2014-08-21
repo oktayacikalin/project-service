@@ -69,6 +69,33 @@ function get_log_file () (
     [ "$SERVICE_LOG_FILE" ] && echo "$SERVICE_LOG_FILE"
 )
 
+function get_commands () {
+    local service=$1
+    local pattern_a="'[^']+'"
+    local pattern_b='"[^"]+"'
+    local squote="'"
+    local dquote='"'
+    local commands=()
+    for base in $(grep -oE '^\. .*.service.*$' $service | cut -d'.' -f2- | tr -d '"' | tr -d "'"); do
+        local source=${base//\$\{SERVICE_DIR\}/${SERVICE_DIR}}
+        local base_commands=($(grep -oE "^\s+($pattern_a|$pattern_b)\)" $source |
+                             sed "s![$squote$dquote]!!g" | tr -d ' ' | cut -d')' -f1))
+        commands+=(${base_commands[@]})
+    done
+    local local_commands=($(grep -oE "^\s+($pattern_a|$pattern_b)\)" $service |
+                          sed "s![$squote$dquote]!!g" | tr -d ' ' | cut -d')' -f1))
+    commands+=(${local_commands[@]})
+    echo "${commands[@]}"
+}
+
+function contains_element () {
+    local elm
+    for elm in ${@:2}; do
+        [[ "$elm" == "$1" ]] && return 0
+    done
+    return 1
+}
+
 case "$COMMAND" in
     'tail')
         log_files=()
@@ -87,15 +114,24 @@ case "$COMMAND" in
         tail -F -n0 ${log_files[@]}
     ;;
 
+    'help')
+        for service in ${AFFECTED_SERVICES[@]}; do
+            commands=$(get_commands "$service")
+            commands=($(echo "$commands" | sed 's!NOOP!!g'))
+            [ "$commands" ] && {
+                name=$(basename "$service")
+                echo "${name%.*}: ${commands[@]}"
+            }
+        done
+    ;;
+
     *)
         # echo "Usage: $0 start|stop|restart|clear-cache|magerun|tail"
         for service in ${AFFECTED_SERVICES[@]}; do
-            has_a=$(grep -q "'$COMMAND')" "$service" && echo 1 || echo 0)
-            has_b=$(grep -q '"'"$COMMAND"'"'")" "$service" && echo 1 || echo 0)
-            has_c=$(grep -q "$COMMAND)" "$service" && echo 1 || echo 0)
-            if [ $has_a -eq 1 ] || [ $has_b -eq 1 ] || [ $has_c -eq 1 ]; then
+            commands=$(get_commands $service)
+            contains_element "$COMMAND" "${commands[@]}" && {
                 name=$(basename "$service")
-                echo -n "Executing command on $name... "
+                echo -n "Executing on ${name%.*}: "
                 "$service" "$COMMAND" && echo "OK" || {
                     err=$?
                     case "$err" in
@@ -105,7 +141,7 @@ case "$COMMAND" in
                         *) echo "FAILED";;
                     esac
                 }
-            fi
+            }
         done
     ;;
 esac
