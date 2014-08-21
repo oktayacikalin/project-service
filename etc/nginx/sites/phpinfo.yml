@@ -1,0 +1,9 @@
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
+domains: [phpinfo.project.ld]
+project_root: /home/user/projects/project
+web_root: "phpinfo"

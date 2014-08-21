@@ -1,0 +1,53 @@
+# TODO
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
+server {
+    listen {{domains.first}}:80;
+    # listen {{domains.first}}:443 ssl spdy;
+    server_name{{#domains}} {{.}}{{/domains}};
+
+    # ssl_certificate     {{project_root}}/etc/ssl/server.crt;
+    # ssl_certificate_key {{project_root}}/etc/ssl/server.key;
+
+    access_log {{project_root}}/var/log/nginx/phpinfo.access.log;
+    error_log  {{project_root}}/var/log/nginx/phpinfo.error.log;
+
+    root {{project_root}}/{{web_root}};
+
+    location / {
+        index index.html index.php;
+        try_files $uri $uri/ @handler;
+        expires 30d;
+    }
+
+    location  /. {
+        return 404;
+    }
+
+    location @handler {
+        rewrite / /index.php;
+    }
+
+    location ~ .php/ {
+        rewrite ^(.*.php)/ $1 last;
+    }
+
+    location ~ .php$ {
+        if (!-e $request_filename) { rewrite / /index.php last; }
+        include {{project_root}}/etc/nginx/fastcgi.conf;
+
+        fastcgi_split_path_info ^(.+\.php)(.*)$;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+        fastcgi_param PATH_TRANSLATED $document_root$fastcgi_path_info;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+
+        fastcgi_pass unix:{{project_root}}/var/run/php5-fpm.sock;
+        fastcgi_index index.php;
+
+        allow 127.0.0.1;
+        deny all;
+    }
+}
