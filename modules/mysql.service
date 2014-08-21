@@ -68,13 +68,15 @@ binlog_format = MIXED
 #server_audit_output_type = SYSLOG
 #server_audit_events = 'CONNECT,QUERY,TABLE'
 #server_audit_logging = on
-#query_cache_limit = 4M
-#query_cache_size = 64M
+query_cache_limit = 64M
+query_cache_size = 128M
 #sort_buffer_size = 4M
 #read_rnd_buffer_size = 1M
-#tmp_table_size = 128M
-#max_heap_table_size = 32M
+tmp_table_size = 128M
+max_heap_table_size = 64M
 #table_cache = 800
+key_buffer_size=100M
+join_buffer_size=4M
 # --- OKTAY END ---
 
 [mysqldump]
