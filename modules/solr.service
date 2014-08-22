@@ -11,6 +11,7 @@
     . "${SERVICE_DIR}/service.conf"
 }
 
+[ -z "$SOLR_INIT_SCRIPT" ] && SOLR_INIT_SCRIPT="${BASE_DIR}/bin/jetty"
 [ -z "$SOLR_HOME" ] && SOLR_HOME="${BASE_DIR}/solr"
 [ -z "$SOLR_HOST" ] && SOLR_HOST="project.ld"
 [ -z "$SOLR_PORT" ] && SOLR_PORT="9002"
@@ -28,7 +29,7 @@ mkdir -p "${SOLR_PID}" "${SOLR_LOGS}"
 
 case "$1" in
     'start')
-        result=$("${BASE_DIR}/etc/init.d/jetty-3.6.2" start)
+        result=$("${SOLR_INIT_SCRIPT}" start)
         RETVAL="$?"
         grep --quiet -i 'process already running' <<< "$result" && {
             exit 97
@@ -41,7 +42,7 @@ case "$1" in
     ;;
 
     'stop')
-        result=$("${BASE_DIR}/etc/init.d/jetty-3.6.2" stop)
+        result=$("${SOLR_INIT_SCRIPT}" stop)
         RETVAL="$?"
         grep --quiet -i 'no process in pidfile' <<< "$result" && {
             exit 98
