@@ -10,52 +10,9 @@ PROJECT_DIR=$(readlink -f $(dirname $0)/../)
 SERVICE_DIR="${PROJECT_DIR}/service"
 . "${SERVICE_DIR}/service.conf"
 
-ALL_SERVICES=$(find "${PROJECT_DIR}/service/" -name "*.service")
-
-# TODO Implement ACTIVE_SERVICES services by filtering them from ALL_SERVICES.
-
-ACTIVE_SERVICES=$ALL_SERVICES
-
 mkdir -p "${VAR_DIR}"
 mkdir -p "${LOG_DIR}"
 mkdir -p "${PID_DIR}"
-
-COMMAND=$1
-shift
-
-REQUESTED_SERVICES=$@
-
-[ -z "$REQUESTED_SERVICES" ] && {
-    AFFECTED_SERVICES=$ACTIVE_SERVICES
-} || {
-    AFFECTED_SERVICES=()
-    for request in $REQUESTED_SERVICES; do
-        [ "$request" = "all" ] && {
-            AFFECTED_SERVICES+=($ACTIVE_SERVICES)
-            continue
-        }
-        found=0
-        for service in $ACTIVE_SERVICES; do
-            [ "$(basename $service)" = "${request}.service" ] && {
-                found=1
-                AFFECTED_SERVICES+=($service)
-            }
-        done
-        [ "$found" = 0 ] && {
-            echo "Service not found: $request"
-            exit 1
-        }
-    done
-}
-
-# Remove duplicates.
-OLDIFS="$IFS"
-IFS=$'\n'
-AFFECTED_SERVICES=(`for R in "${AFFECTED_SERVICES[@]}" ; do echo "$R" ; done | sort -du`)
-IFS="$OLDIFS"
-
-# echo ${AFFECTED_SERVICES[@]}
-# exit
 
 function get_log_dir () (
     local service=$1
@@ -96,52 +53,104 @@ function contains_element () {
     return 1
 }
 
-case "$COMMAND" in
-    'tail')
-        log_files=()
-        for service in ${AFFECTED_SERVICES[@]}; do
-            log_dir=$(get_log_dir "$service")
-            [ "$log_dir" ] && {
-                for log_file in $(find "${log_dir}/" -iname '*.log' -exec echo "'{}'" +); do
-                    log_files+=("$log_file")
-                done
-            }
-            log_file=$(get_log_file "$service")
-            [ "$log_file" ] && {
-                log_files+=("$log_file")
-            }
-        done
-        tail -F -n0 ${log_files[@]}
-    ;;
+function handle_action () {
+    COMMAND=$1
+    shift
 
-    'help')
-        for service in ${AFFECTED_SERVICES[@]}; do
-            commands=$(get_commands "$service")
-            commands=($(echo "$commands" | sed 's!NOOP!!g'))
-            [ "$commands" ] && {
-                name=$(basename "$service")
-                echo "${name%.*}: ${commands[@]}"
-            }
-        done
-    ;;
+    REQUESTED_SERVICES=$@
 
-    *)
-        # echo "Usage: $0 start|stop|restart|clear-cache|magerun|tail"
-        for service in ${AFFECTED_SERVICES[@]}; do
-            commands=$(get_commands $service)
-            contains_element "$COMMAND" "${commands[@]}" && {
-                name=$(basename "$service")
-                echo -n "Executing on ${name%.*}: "
-                "$service" "$COMMAND" && echo "OK" || {
-                    err=$?
-                    case "$err" in
-                        97) echo "OK / NOOP";;  # already started
-                        98) echo "OK / NOOP";;  # already stopped
-                        99) echo "N/A";;
-                        *) echo "FAILED";;
-                    esac
+    [ -z "$REQUESTED_SERVICES" ] && {
+        AFFECTED_SERVICES=$ACTIVE_SERVICES
+    } || {
+        AFFECTED_SERVICES=()
+        for request in $REQUESTED_SERVICES; do
+            [ "$request" = "all" ] && {
+                AFFECTED_SERVICES+=($ACTIVE_SERVICES)
+                continue
+            }
+            found=0
+            for service in $ACTIVE_SERVICES; do
+                [ "$(basename $service)" = "${request}.service" ] && {
+                    found=1
+                    AFFECTED_SERVICES+=($service)
                 }
+            done
+            [ "$found" = 0 ] && {
+                echo "Service not found: $request"
+                exit 1
             }
         done
-    ;;
-esac
+    }
+
+    # Remove duplicates.
+    OLDIFS="$IFS"
+    IFS=$'\n'
+    AFFECTED_SERVICES=(`for R in "${AFFECTED_SERVICES[@]}" ; do echo "$R" ; done | sort -du`)
+    IFS="$OLDIFS"
+
+    # echo ${AFFECTED_SERVICES[@]}
+    # exit
+
+    case "$COMMAND" in
+        'tail')
+            log_files=()
+            for service in ${AFFECTED_SERVICES[@]}; do
+                log_dir=$(get_log_dir "$service")
+                [ "$log_dir" ] && {
+                    for log_file in $(find "${log_dir}/" -iname '*.log' -exec echo "'{}'" +); do
+                        log_files+=("$log_file")
+                    done
+                }
+                log_file=$(get_log_file "$service")
+                [ "$log_file" ] && {
+                    log_files+=("$log_file")
+                }
+            done
+            tail -F -n0 ${log_files[@]}
+        ;;
+
+        'help')
+            for service in ${AFFECTED_SERVICES[@]}; do
+                commands=$(get_commands "$service")
+                commands=($(echo "$commands" | sed 's!NOOP!!g'))
+                [ "$commands" ] && {
+                    name=$(basename "$service")
+                    echo "${name%.*}: ${commands[@]}"
+                }
+            done
+        ;;
+
+        *)
+            # echo "Usage: $0 start|stop|restart|clear-cache|magerun|tail"
+            for service in ${AFFECTED_SERVICES[@]}; do
+                commands=$(get_commands $service)
+                contains_element "$COMMAND" "${commands[@]}" && {
+                    name=$(basename "$service")
+                    echo -n "Executing $COMMAND on ${name%.*}: "
+                    "$service" "$COMMAND" && echo "OK" || {
+                        err=$?
+                        case "$err" in
+                            97) echo "OK / NOOP";;  # already started
+                            98) echo "OK / NOOP";;  # already stopped
+                            99) echo "N/A";;
+                            *) echo "FAILED";;
+                        esac
+                    }
+                }
+            done
+        ;;
+    esac
+}
+
+ALL_SERVICES=$(find "${PROJECT_DIR}/service/" -name "*.service")
+
+# TODO Implement ACTIVE_SERVICES services by filtering them from ALL_SERVICES.
+
+ACTIVE_SERVICES=$ALL_SERVICES
+
+for action in $@; do
+    action=($(tr ':' ' ' <<< $action))
+    command=${action[0]}
+    services=($(tr ',' ' ' <<< ${action[1]}))
+    handle_action $command ${services[@]}
+done
