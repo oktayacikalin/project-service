@@ -7,7 +7,7 @@
 # @license   MIT (LICENSE.txt)
 
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
-. "${SERVICE_DIR}/service.conf"
+[ -z "$BASE_DIR" ] && . "${SERVICE_DIR}/service.conf"
 
 [ -z "$MYSQL_HOST" ] && MYSQL_HOST="project.ld"
 [ -z "$MYSQL_PORT" ] && MYSQL_PORT=4002
