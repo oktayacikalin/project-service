@@ -7,7 +7,7 @@
 # @license   MIT (LICENSE.txt)
 
 PROJECT_DIR=$(readlink -f $(dirname $0)/../)
-SERVICE_DIR="${PROJECT_DIR}/service"
+export SERVICE_DIR="${PROJECT_DIR}/service"
 . "${SERVICE_DIR}/service.conf"
 
 mkdir -p "${VAR_DIR}"
@@ -26,6 +26,15 @@ function get_log_file () (
     [ "$SERVICE_LOG_FILE" ] && echo "$SERVICE_LOG_FILE"
 )
 
+function unique () {
+    local items=($@)
+    OLDIFS="$IFS"
+    IFS=$'\n'
+    items=(`for R in "${items[@]}" ; do echo "$R" ; done | sort -du`)
+    IFS="$OLDIFS"
+    echo ${items[@]}
+}
+
 function get_commands () {
     local service=$1
     local pattern_a="'[^']+'"
@@ -33,7 +42,7 @@ function get_commands () {
     local squote="'"
     local dquote='"'
     local commands=()
-    for base in $(grep -oE '^\. .*.service.*$' $service | cut -d'.' -f2- | tr -d '"' | tr -d "'"); do
+    for base in $(grep -oE '^\s*\. .*.service.*$' $service | cut -d'.' -f2- | tr -d '"' | tr -d "'"); do
         local source=${base//\$\{SERVICE_DIR\}/${SERVICE_DIR}}
         local base_commands=($(grep -oE "^\s+($pattern_a|$pattern_b)\)" $source |
                              sed "s![$squote$dquote]!!g" | tr -d ' ' | cut -d')' -f1))
@@ -42,7 +51,7 @@ function get_commands () {
     local local_commands=($(grep -oE "^\s+($pattern_a|$pattern_b)\)" $service |
                           sed "s![$squote$dquote]!!g" | tr -d ' ' | cut -d')' -f1))
     commands+=(${local_commands[@]})
-    echo "${commands[@]}"
+    unique ${commands[@]}
 }
 
 function contains_element () {
@@ -82,11 +91,7 @@ function handle_action () {
         done
     }
 
-    # Remove duplicates.
-    OLDIFS="$IFS"
-    IFS=$'\n'
-    AFFECTED_SERVICES=(`for R in "${AFFECTED_SERVICES[@]}" ; do echo "$R" ; done | sort -du`)
-    IFS="$OLDIFS"
+    AFFECTED_SERVICES=$(unique ${AFFECTED_SERVICES[@]})
 
     # echo ${AFFECTED_SERVICES[@]}
     # exit
