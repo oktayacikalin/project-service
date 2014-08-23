@@ -71,7 +71,8 @@ case "$1" in
     ;;
 
     'clear-cache')
-        $CLIEXEC -h $REDIS_HOST -p $REDIS_PORT flushall
+        output=$($CLIEXEC -h $REDIS_HOST -p $REDIS_PORT flushall)
+        [ "$output" != "OK" ] && echo $output
     ;;
 
     'redis-shell')
