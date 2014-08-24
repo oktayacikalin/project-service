@@ -4,7 +4,6 @@
 # @copyright Oktay Acikalin
 # @license   MIT (LICENSE.txt)
 
-{{! Multi domain configuration }}
 {{#use_run_code_mapping}}
 map $http_host $run_code {
     {{#run_code_mapping}}
@@ -12,6 +11,7 @@ map $http_host $run_code {
     {{/run_code_mapping}}
 }
 {{/use_run_code_mapping}}
+
 {{#use_country_code_mapping}}
 map $http_host $country_code {
     {{#country_code_mapping}}
@@ -28,8 +28,8 @@ server {
     ssl_certificate     {{project_root}}/etc/ssl/server.crt;
     ssl_certificate_key {{project_root}}/etc/ssl/server.key;
 
-    access_log {{project_root}}/var/log/nginx/magento.access.log;
-    error_log  {{project_root}}/var/log/nginx/magento.error.log;
+    access_log {{project_root}}/var/log/nginx/{{log_identifier}}.access.log;
+    error_log  {{project_root}}/var/log/nginx/{{log_identifier}}.error.log;
 
     root {{project_root}}/{{web_root}};
 
@@ -67,6 +67,14 @@ server {
         rewrite ^(.*.php)/ $1 last;
     }
 
+    {{#has_dynamic_static_files}}
+    location ~* \.(jpg|jpeg|gif|png|ico|zip|tgz|gz|rar|bz2|doc|xls|exe|pdf|ppt|txt|tar|mid|midi|wav|bmp|rtf)$ {
+        try_files $uri =404;
+        expires 2h;
+    }
+    {{/has_dynamic_static_files}}
+
+    {{^has_dynamic_static_files}}
     location /media/ {
         if (!-e $request_filename) { return 404; }
     }
@@ -74,6 +82,7 @@ server {
     location /skin/ {
         if (!-e $request_filename) { return 404; }
     }
+    {{/has_dynamic_static_files}}
 
     location ~ .php$ {
         if (!-e $request_filename) { rewrite / /index.php last; }
@@ -86,11 +95,16 @@ server {
 
         {{#use_run_code_mapping}}
         fastcgi_param MAGE_RUN_CODE $run_code;
-        fastcgi_param MAGE_RUN_TYPE website;
+        fastcgi_param MAGE_RUN_TYPE $run_type;
         {{/use_run_code_mapping}}
+
         {{#use_country_code_mapping}}
         fastcgi_param MAGE_COUNTRY_CODE $country_code;
         {{/use_country_code_mapping}}
+
+        {{#additional_fastcgi_params}}
+        fastcgi_param {{key}} {{value}};
+        {{/additional_fastcgi_params}}
 
         fastcgi_pass unix:{{project_root}}/var/run/php5-fpm.sock;
         fastcgi_index index.php;

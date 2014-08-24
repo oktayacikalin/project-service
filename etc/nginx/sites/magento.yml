@@ -5,22 +5,30 @@
 # @license   MIT (LICENSE.txt)
 
 domains: [project.ld, de.project.ld, en.project.ld, admin.project.ld]
-project_root: /home/user/projects/project
-web_root: magento
+project_root: "/home/user/projects/project"
+web_root: "magento"
+
 run_code_mapping: [
 	"de.project.ld store_de",
 	"en.project.ld store_en",
 ]
+run_type: website
 use_run_code_mapping: false
+
 country_code_mapping: [
 	"de.project.ld de",
 	"en.project.ld en",
 ]
 use_country_code_mapping: false
-varnish_host: http://project.ld:7002
+
+varnish_host: "http://project.ld:7002"
+
 cdn_remote_hosts: ["images.yourcdn.com"]
 cdn_local_host: cdn.project.ld
 use_cdn_rewrites: false
+
+log_identifier: magento
+
 denied_locations: [
 	"/app/",
 	"/includes/",
@@ -29,4 +37,10 @@ denied_locations: [
 	"/pkginfo/",
 	"/report/config.xml/",
 	"/var/",
+]
+
+has_dynamic_static_files: false
+
+additional_fastcgi_params: [
+	{ key: "MAGE_IS_DEVELOPER_MODE", value: 1 },
 ]
