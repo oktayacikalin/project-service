@@ -9,9 +9,9 @@
 proxy_cache_path {{project_root}}/var/cache/nginx/cdn keys_zone=cdn:32m;
 
 server {
-    listen {{cdn_host_local}}:80;
-    listen {{cdn_host_local}}:443 ssl spdy;
-    server_name {{cdn_host_local}};
+    listen {{cdn_local_host}}:80;
+    listen {{cdn_local_host}}:443 ssl spdy;
+    server_name {{cdn_local_host}};
 
     ssl_certificate     {{project_root}}/etc/ssl/server.crt;
     ssl_certificate_key {{project_root}}/etc/ssl/server.key;
@@ -28,8 +28,8 @@ server {
         # proxy_cache_bypass $cookie_nocache $arg_nocache$arg_comment;
         # proxy_no_cache $http_pragma $http_authorization;
 
-        proxy_set_header Host {{cdn_host_remote}};
-        proxy_pass http://{{cdn_host_remote}};
+        proxy_set_header Host {{cdn_remote_hosts.first}};
+        proxy_pass http://{{cdn_remote_hosts.first}};
     }
 
 }

@@ -4,17 +4,21 @@
 # @copyright Oktay Acikalin
 # @license   MIT (LICENSE.txt)
 
-# Multi domain configuration
-# map $http_host $run_code {
-#     {{#run_code_mapping}}
-#     {{.}};
-#     {{/run_code_mapping}}
-# }
-# map $http_host $country_code {
-#     {{#country_code_mapping}}
-#     {{.}};
-#     {{/country_code_mapping}}
-# }
+{{! Multi domain configuration }}
+{{#use_run_code_mapping}}
+map $http_host $run_code {
+    {{#run_code_mapping}}
+    {{.}};
+    {{/run_code_mapping}}
+}
+{{/use_run_code_mapping}}
+{{#use_country_code_mapping}}
+map $http_host $country_code {
+    {{#country_code_mapping}}
+    {{.}};
+    {{/country_code_mapping}}
+}
+{{/use_country_code_mapping}}
 
 server {
     listen {{domains.first}}:81;
@@ -29,9 +33,13 @@ server {
 
     root {{project_root}}/{{web_root}};
 
-    # Enable these to rewrite CDN URLs to your local cache.
-    # subs_filter_types text/css;
-    # subs_filter {{cdn_host_remote}} {{cdn_host_local}};
+    {{! Use these to rewrite CDN URLs to your local cache. }}
+    {{#use_cdn_rewrites}}
+    subs_filter_types text/css;
+    {{#cdn_remote_hosts}}
+    subs_filter {{.}} {{cdn_local_host}};
+    {{/cdn_remote_hosts}}
+    {{/use_cdn_rewrites}}
 
     location / {
         index index.html index.php;
@@ -39,13 +47,9 @@ server {
         expires 30d;
     }
 
-    location /app/                { deny all; }
-    location /includes/           { deny all; }
-    location /lib/                { deny all; }
-    location /media/downloadable/ { deny all; }
-    location /pkginfo/            { deny all; }
-    location /report/config.xml   { deny all; }
-    location /var/                { deny all; }
+    {{#denied_locations}}
+    location {{.}} { deny all; }
+    {{/denied_locations}}
 
     location /var/export/ {
         autoindex            on;
@@ -80,9 +84,13 @@ server {
         fastcgi_param PATH_TRANSLATED $document_root$fastcgi_path_info;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
 
-        # fastcgi_param MAGE_RUN_CODE $run_code;
-        # fastcgi_param MAGE_RUN_TYPE website;
-        # fastcgi_param MAGE_COUNTRY_CODE $country_code;
+        {{#use_run_code_mapping}}
+        fastcgi_param MAGE_RUN_CODE $run_code;
+        fastcgi_param MAGE_RUN_TYPE website;
+        {{/use_run_code_mapping}}
+        {{#use_country_code_mapping}}
+        fastcgi_param MAGE_COUNTRY_CODE $country_code;
+        {{/use_country_code_mapping}}
 
         fastcgi_pass unix:{{project_root}}/var/run/php5-fpm.sock;
         fastcgi_index index.php;
