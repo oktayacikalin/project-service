@@ -7,26 +7,68 @@
 # @license   MIT (LICENSE.txt)
 
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
-. "${SERVICE_DIR}/service.conf"
+[ -z "$BASE_DIR" ] && . "${SERVICE_DIR}/service.conf"
 
 [ -z "$MAGENTO_HOME" ] && MAGENTO_HOME="${BASE_DIR}/shop"
+[ -z "$MAGENTO_SHELL_INDEXER" ] && MAGENTO_SHELL_INDEXER="shell/indexer.php"
+[ -z "$MAGENTO_SHELL_MIGRATE" ] && MAGENTO_SHELL_MIGRATE="${BASE_DIR}/bin/magento-migrate.php"
 
 SERVICE_LOG_DIR="${MAGENTO_HOME}/var/log"
+
+[ -z "$MAGE_FILE" ] && MAGE_FILE="${MAGENTO_HOME}/app/code/core/Mage/Core/Model/App.php"
+[ -z "$MAGE_COMMANDS" ] && MAGE_COMMANDS=(
+    Mage_Core_Model_Resource_Setup::applyAllUpdates
+    Mage_Core_Model_Resource_Setup::applyAllDataUpdates
+)
 
 case "$1" in
     'clear-cache')
         pushd "${MAGENTO_HOME}" > /dev/null
-        php shell/cache.php flush
+        magerun -q cache:clean
         popd > /dev/null
     ;;
 
-    'magerun')
-        cd "${MAGENTO_HOME}" && magerun ${2-}
+    'disable-auto-migrations')
+        pushd "${MAGENTO_HOME}" > /dev/null
+        # TODO Write file into overlay folder which PHP will include on top.
+        for command in ${MAGE_COMMANDS[@]}; do
+            sed -e "s!^\(\s*\)${command}!\1// ${command}!g" -i $MAGE_FILE
+        done
+        popd > /dev/null
+    ;;
+
+    'enable-auto-migrations')
+        pushd "${MAGENTO_HOME}" > /dev/null
+        # TODO Write file into overlay folder which PHP will include on top.
+        for command in ${MAGE_COMMANDS[@]}; do
+            sed -e "s!^\(\s*\)// ${command}!\1${command}!g" -i $MAGE_FILE
+        done
+        popd > /dev/null
+    ;;
+
+    'migrate')
+        pushd "${MAGENTO_HOME}" > /dev/null
+        php $MAGENTO_SHELL_MIGRATE
+        popd > /dev/null
+    ;;
+
+    'reindex')
+        pushd "${MAGENTO_HOME}" > /dev/null
+        php $MAGENTO_SHELL_INDEXER reindexall
+        popd > /dev/null
+    ;;
+
+    'reindex-search')
+        pushd "${MAGENTO_HOME}" > /dev/null
+        php $MAGENTO_SHELL_INDEXER --reindex catalogsearch_fulltext
+        popd > /dev/null
     ;;
 
     'magerun-shell')
+        pushd "${MAGENTO_HOME}" > /dev/null
         echo  # Put the prompt into a new line.
-        cd "${MAGENTO_HOME}" && magerun shell
+        magerun shell
+        popd > /dev/null
     ;;
 
     'NOOP')
