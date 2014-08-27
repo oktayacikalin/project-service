@@ -4,6 +4,7 @@
 # @copyright Oktay Acikalin
 # @license   MIT (LICENSE.txt)
 
-domains: [chive.project.ld]
-project_root: /home/user/projects/project
+domains: ["chive.project.ld"]
+project_root: "/home/user/projects/project"
 web_root: "chive"
+log_identifier: "chive"

@@ -4,7 +4,7 @@
 # @copyright Oktay Acikalin
 # @license   MIT (LICENSE.txt)
 
-domains: ["phpinfo.project.ld"]
+domains: ["php-example.project.ld"]
 project_root: "/home/user/projects/project"
-web_root: "phpinfo"
-log_identifier: "phpinfo"
+web_root: "php-example"
+log_identifier: "php-example"
