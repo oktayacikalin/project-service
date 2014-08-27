@@ -95,7 +95,7 @@ server {
 
         {{#use_run_code_mapping}}
         fastcgi_param MAGE_RUN_CODE $run_code;
-        fastcgi_param MAGE_RUN_TYPE $run_type;
+        fastcgi_param MAGE_RUN_TYPE {{run_type}};
         {{/use_run_code_mapping}}
 
         {{#use_country_code_mapping}}
@@ -103,7 +103,7 @@ server {
         {{/use_country_code_mapping}}
 
         {{#additional_fastcgi_params}}
-        fastcgi_param {{key}} {{value}};
+        fastcgi_param {{key}} "{{value}}";
         {{/additional_fastcgi_params}}
 
         fastcgi_pass unix:{{project_root}}/var/run/php5-fpm.sock;

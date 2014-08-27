@@ -4,7 +4,7 @@
 # @copyright Oktay Acikalin
 # @license   MIT (LICENSE.txt)
 
-domains: [project.ld, de.project.ld, en.project.ld, admin.project.ld]
+domains: ["project.ld", "de.project.ld", "en.project.ld", "admin.project.ld"]
 project_root: "/home/user/projects/project"
 web_root: "magento"
 
@@ -42,5 +42,5 @@ denied_locations: [
 has_dynamic_static_files: false
 
 additional_fastcgi_params: [
-	{ key: "MAGE_IS_DEVELOPER_MODE", value: 1 },
+	# { key: "MAGE_IS_DEVELOPER_MODE", value: 1 },
 ]
