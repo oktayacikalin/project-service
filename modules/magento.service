@@ -24,7 +24,13 @@ SERVICE_LOG_DIR="${MAGENTO_HOME}/var/log"
 case "$1" in
     'clear-cache')
         pushd "${MAGENTO_HOME}" > /dev/null
-        magerun -q cache:clean
+        magerun -q cache:flush
+        popd > /dev/null
+    ;;
+
+    'clear-block-cache')
+        pushd "${MAGENTO_HOME}" > /dev/null
+        magerun -q cache:clean block_html translate layout full_page
         popd > /dev/null
     ;;
 
