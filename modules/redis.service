@@ -31,8 +31,7 @@ CLIEXEC="${BASE_DIR}/bin/redis-cli"
 
 case "$1" in
     'start')
-        if [ -f "$REDIS_PID" ]
-        then
+        if [ -f "$REDIS_PID" ]; then
                 # TODO test if PID is running and don't complain.
                 # echo "$REDIS_PID exists, process is already running or crashed"
                 exit 97
@@ -43,8 +42,7 @@ case "$1" in
     ;;
 
     'stop')
-        if [ ! -f "$REDIS_PID" ]
-        then
+        if [ ! -f "$REDIS_PID" ]; then
                 # echo "$REDIS_PID does not exist, process is not running"
                 exit 98
         else
@@ -72,7 +70,7 @@ case "$1" in
 
     'clear-cache')
         output=$($CLIEXEC -h $REDIS_HOST -p $REDIS_PORT flushall)
-        [ "$output" != "OK" ] && echo $output
+        [ "$output" == "OK" ] || (echo $output ; exit 1)
     ;;
 
     'redis-shell')
