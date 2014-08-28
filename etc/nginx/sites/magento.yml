@@ -43,4 +43,5 @@ has_dynamic_static_files: false
 
 additional_fastcgi_params: [
 	# { key: "MAGE_IS_DEVELOPER_MODE", value: 1 },
+	{ key: "PHP_VALUE", value: "memory_limit = 256M" },
 ]

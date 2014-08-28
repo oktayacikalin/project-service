@@ -8,7 +8,7 @@ server {
     listen {{domains.first}}:80;
     server_name{{#domains}} {{.}}{{/domains}};
 
-    access_log {{project_root}}/var/log/nginx/varnish.access.log;
+    access_log {{project_root}}/var/log/nginx/varnish[$host].access.log;
     error_log  {{project_root}}/var/log/nginx/varnish.error.log;
 
     root {{project_root}}/{{web_root}};

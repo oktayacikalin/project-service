@@ -12,7 +12,7 @@ server {
     # ssl_certificate     {{project_root}}/etc/ssl/server.crt;
     # ssl_certificate_key {{project_root}}/etc/ssl/server.key;
 
-    access_log {{project_root}}/var/log/nginx/{{log_identifier}}.access.log;
+    access_log {{project_root}}/var/log/nginx/{{log_identifier}}[$host].access.log;
     error_log  {{project_root}}/var/log/nginx/{{log_identifier}}.error.log;
 
     root {{project_root}}/{{web_root}};
