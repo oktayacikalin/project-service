@@ -12,6 +12,7 @@
 [ -z "$MAGENTO_HOME" ] && MAGENTO_HOME="${BASE_DIR}/shop"
 [ -z "$MAGENTO_SHELL_INDEXER" ] && MAGENTO_SHELL_INDEXER="shell/indexer.php"
 [ -z "$MAGENTO_SHELL_MIGRATE" ] && MAGENTO_SHELL_MIGRATE="${BASE_DIR}/bin/magento-migrate.php"
+[ -z "$MAGENTO_SHELL_EXPORT_TRANSLATIONS" ] && MAGENTO_SHELL_EXPORT_TRANSLATIONS="${BASE_DIR}/bin/magento-export-inline-translations.php"
 
 SERVICE_LOG_DIR="${MAGENTO_HOME}/var/log"
 
@@ -74,6 +75,12 @@ case "$1" in
         pushd "${MAGENTO_HOME}" > /dev/null
         echo  # Put the prompt into a new line.
         magerun shell
+        popd > /dev/null
+    ;;
+
+    'export-inline-translations')
+        pushd "${MAGENTO_HOME}" > /dev/null
+        php $MAGENTO_SHELL_EXPORT_TRANSLATIONS
         popd > /dev/null
     ;;
 
