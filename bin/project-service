@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# TODO
+# Main service control script which acts as a proxy for the others.
 #
 # @author    Oktay Acikalin <oktay.acikalin@gmail.com>
 # @copyright Oktay Acikalin
@@ -93,6 +93,7 @@ function handle_action () {
 
     AFFECTED_SERVICES=$(unique ${AFFECTED_SERVICES[@]})
 
+    # TODO project.service restart:nginx,php5-fpm,varnish,varnish produces duplicates
     # echo ${AFFECTED_SERVICES[@]}
     # exit
 
@@ -126,7 +127,6 @@ function handle_action () {
         ;;
 
         *)
-            # echo "Usage: $0 start|stop|restart|clear-cache|magerun|tail"
             for service in ${AFFECTED_SERVICES[@]}; do
                 commands=$(get_commands $service)
                 contains_element "$COMMAND" "${commands[@]}" && {
