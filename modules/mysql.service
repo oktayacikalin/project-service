@@ -28,7 +28,8 @@ mkdir -p "$(dirname ${MYSQL_ERROR_LOG})"
 
 function fill () {
     local template=$1
-    sed -e "s!\${MYSQL_HOST}!${MYSQL_HOST}!g" \
+    sed -e "s!\${BASE_DIR}!${BASE_DIR}!g" \
+        -e "s!\${MYSQL_HOST}!${MYSQL_HOST}!g" \
         -e "s!\${MYSQL_PORT}!${MYSQL_PORT}!g" \
         -e "s!\${MYSQL_USER}!${MYSQL_USER}!g" \
         -e "s!\${MYSQL_PASS}!${MYSQL_PASS}!g" \

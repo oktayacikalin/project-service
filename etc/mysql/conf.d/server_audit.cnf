@@ -1,0 +1,4 @@
+[mysqld]
+server_audit_output_type = SYSLOG
+server_audit_events = 'CONNECT,QUERY,TABLE'
+server_audit_logging = on
