@@ -103,7 +103,7 @@ function handle_action () {
             for service in ${AFFECTED_SERVICES[@]}; do
                 log_dir=$(get_log_dir "$service")
                 [ "$log_dir" ] && {
-                    for log_file in $(find "${log_dir}/" -iname '*.log' -exec echo "'{}'" +); do
+                    for log_file in $(find -L "${log_dir}/" -iname '*.log' -exec echo "'{}'" +); do
                         log_files+=("$log_file")
                     done
                 }
