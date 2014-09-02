@@ -31,7 +31,7 @@ case "$1" in
 
     'clear-block-cache')
         pushd "${MAGENTO_HOME}" > /dev/null
-        magerun -q cache:clean block_html translate layout full_page
+        magerun -q cache:clean block_html,translate,layout,full_page
         popd > /dev/null
     ;;
 
