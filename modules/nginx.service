@@ -22,6 +22,14 @@ mkdir -p "${BASE_DIR}/var/lib/nginx" "${LOG_DIR}/nginx"
 mkdir -p "${BASE_DIR}/var/cache/nginx"
 
 case "$1" in
+    'disable-init-script')
+        sudo sh -c 'echo "manual" > /etc/init/nginx.override'
+    ;;
+
+    'enable-init-script')
+        sudo rm '/etc/init/nginx.override'
+    ;;
+
     'start')
         sudo start-stop-daemon --start --quiet --pidfile "${NGINX_PID}" --chdir "$BASE_DIR" --exec "${NGINX_DAEMON}" \
             --test \

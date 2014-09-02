@@ -19,6 +19,14 @@ TIMEOUT=30
 SERVICE_LOG_FILE="${LOG_DIR}/php5-fpm.log"
 
 case "$1" in
+    'disable-init-script')
+        sudo sh -c 'echo "manual" > /etc/init/php5-fpm.override'
+    ;;
+
+    'enable-init-script')
+        sudo rm '/etc/init/php5-fpm.override'
+    ;;
+
     'start')
         start-stop-daemon --start --quiet --pidfile "${PHP5_FPM_PID}" --exec "${PHP5_FPM_DAEMON}" --test \
             || exit 97

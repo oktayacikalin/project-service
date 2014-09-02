@@ -21,6 +21,14 @@ SERVICE_LOG_FILE="${LOG_DIR}/varnishd.log"
 mkdir -p "${VARNISH_LIB}"
 
 case "$1" in
+    'disable-init-script')
+        sudo sh -c 'echo "manual" > /etc/init/varnish.override'
+    ;;
+
+    'enable-init-script')
+        sudo rm '/etc/init/varnish.override'
+    ;;
+
     'start')
         [ -f "${VARNISH_PID}" ] && {
             running=$(ps aux | grep "$(cat "${VARNISH_PID}")" | grep -v grep)

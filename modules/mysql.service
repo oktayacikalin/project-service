@@ -54,6 +54,14 @@ function wait () {
 }
 
 case "$1" in
+    'disable-init-script')
+        sudo sh -c 'echo "manual" > /etc/init/mysql.override'
+    ;;
+
+    'enable-init-script')
+        sudo rm '/etc/init/mysql.override'
+    ;;
+
     'bootstrap')
         mysql_install_db --defaults-file="${MYSQL_CONF}"
         $0 start
