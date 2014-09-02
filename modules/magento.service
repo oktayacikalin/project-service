@@ -84,6 +84,15 @@ case "$1" in
         popd > /dev/null
     ;;
 
+    'toggle-template-hints')
+        pushd "${MAGENTO_HOME}" > /dev/null
+        echo  # Put the prompt into a new line.
+        magerun dev:template-hints
+        magerun dev:template-hints-blocks
+        magerun cache:clean block_html
+        popd > /dev/null
+    ;;
+
     'NOOP')
         # NOOP
     ;;
