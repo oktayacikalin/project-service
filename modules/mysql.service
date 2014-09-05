@@ -54,6 +54,81 @@ function wait () {
     done
 }
 
+function ensure_innodb_barracuda_config () {
+    [ -e "${BASE_DIR}/etc/mysql/conf.d/innodb_barracuda_format.cnf" ] || {
+        echo -n ' Adding symlink for using InnoDB Barracuda format... '
+        ln -s "../../../service/.root/etc/mysql/conf.d/innodb_barracuda_format.cnf" \
+            "${BASE_DIR}/etc/mysql/conf.d/innodb_barracuda_format.cnf"
+    }
+}
+
+function ensure_innodb_barracuda_online () {
+    SQL="
+    SET GLOBAL innodb_file_format = Barracuda;
+    SET GLOBAL innodb_file_format_max = Barracuda;
+    # SET GLOBAL innodb_compression_level = 6;
+    "
+    mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" -e "$SQL"
+}
+
+function set_innodb_table_row_format () {
+    FORMAT=$1
+
+    SQL="
+    USE INFORMATION_SCHEMA;
+    SELECT CONCAT(\"ALTER TABLE \`\", TABLE_SCHEMA,\"\`.\`\", TABLE_NAME, \"\` ROW_FORMAT=${FORMAT};\") AS MySQLCMD
+        FROM TABLES
+        WHERE ENGINE = \"InnoDB\";
+    "
+    SQL=$(mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" --batch --skip-column-names -e "$SQL")
+    readarray -t SQL <<<"$SQL"
+
+    echo -n " Altering ${#SQL[@]} tables... "
+
+    for statement in "${SQL[@]}"; do
+        echo -n '.'
+        mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" -e "${statement}"
+    done
+}
+
+# TODO Currently only supported by Fusion-io.
+# function enable_innodb_table_page_compression () {
+#     SQL="
+#     USE INFORMATION_SCHEMA;
+#     SELECT CONCAT(\"ALTER TABLE \`\", TABLE_SCHEMA,\"\`.\`\", TABLE_NAME, \"\` PAGE_COMPRESSED=1;\") AS MySQLCMD
+#         FROM TABLES
+#         WHERE ENGINE = \"InnoDB\";
+#     "
+#     SQL=$(mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" --batch --skip-column-names -e "$SQL")
+#     readarray -t SQL <<<"$SQL"
+
+#     echo -n " Altering ${#SQL[@]} tables... "
+
+#     for statement in "${SQL[@]}"; do
+#         echo -n '.'
+#         mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" -e "${statement}"
+#     done
+# }
+
+# TODO Currently only supported by Fusion-io.
+# function disable_innodb_table_page_compression () {
+#     SQL="
+#     USE INFORMATION_SCHEMA;
+#     SELECT CONCAT(\"ALTER TABLE \`\", TABLE_SCHEMA,\"\`.\`\", TABLE_NAME, \"\` PAGE_COMPRESSED=0;\") AS MySQLCMD
+#         FROM TABLES
+#         WHERE ENGINE = \"InnoDB\";
+#     "
+#     SQL=$(mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" --batch --skip-column-names -e "$SQL")
+#     readarray -t SQL <<<"$SQL"
+
+#     echo -n " Altering ${#SQL[@]} tables... "
+
+#     for statement in "${SQL[@]}"; do
+#         echo -n '.'
+#         mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" -e "${statement}"
+#     done
+# }
+
 case "$1" in
     'disable-init-script')
         sudo sh -c 'echo "manual" > /etc/init/mysql.override'
@@ -115,6 +190,52 @@ case "$1" in
     'mysqltuner')
         mysqltuner --forcemem 8192 --forceswap 8192 --socket="${MYSQL_SOCKET}"
     ;;
+
+    'set-innodb-table-row-format-compact')
+        echo -n '.'
+        ensure_innodb_barracuda_config
+        echo -n '.'
+        ensure_innodb_barracuda_online
+        echo -n '.'
+        set_innodb_table_row_format COMPACT
+
+        echo -n ' '
+    ;;
+
+    'set-innodb-table-row-format-compressed')
+        echo -n '.'
+        ensure_innodb_barracuda_config
+        echo -n '.'
+        ensure_innodb_barracuda_online
+        echo -n '.'
+        set_innodb_table_row_format COMPRESSED
+
+        echo -n ' '
+    ;;
+
+    # TODO Currently only supported by Fusion-io.
+    # 'enable-innodb-table-page-compression')
+    #     echo -n '.'
+    #     ensure_innodb_barracuda_config
+    #     echo -n '.'
+    #     ensure_innodb_barracuda_online
+    #     echo -n '.'
+    #     enable_innodb_table_page_compression
+
+    #     echo -n ' '
+    # ;;
+
+    # TODO Currently only supported by Fusion-io.
+    # 'disable-innodb-table-page-compression')
+    #     echo -n '.'
+    #     ensure_innodb_barracuda_config
+    #     echo -n '.'
+    #     ensure_innodb_barracuda_online
+    #     echo -n '.'
+    #     disable_innodb_table_page_compression
+
+    #     echo -n ' '
+    # ;;
 
     'NOOP')
         # NOOP

@@ -1,0 +1,4 @@
+[mysqld]
+innodb_file_format = Barracuda
+innodb_file_format_max = Barracuda
+# innodb_compression_level = 6
