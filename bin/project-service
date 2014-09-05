@@ -155,7 +155,9 @@ ACTIVE_SERVICES=$ALL_SERVICES
 
 for action in $@; do
     action=($(tr ':' ' ' <<< $action))
-    command=${action[0]}
+    commands=($(tr ',' ' ' <<< ${action[0]}))
     services=($(tr ',' ' ' <<< ${action[1]}))
-    handle_action $command ${services[@]}
+    for command in ${commands[@]}; do
+        handle_action $command ${services[@]}
+    done
 done
