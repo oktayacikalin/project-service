@@ -7,7 +7,7 @@
 # @license   MIT (LICENSE.txt)
 
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
-[ -z "$BASE_DIR" ] && . "${SERVICE_DIR}/service.conf"
+[ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
 [ -z "$REDIS_PID" ] && REDIS_PID="${PID_DIR}/redis.pid"
 [ -z "$REDIS_HOST" ] && REDIS_HOST="project.ld"

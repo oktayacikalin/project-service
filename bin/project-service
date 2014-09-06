@@ -8,7 +8,7 @@
 
 PROJECT_DIR=$(readlink -f $(dirname $0)/../)
 export SERVICE_DIR="${PROJECT_DIR}/service"
-. "${SERVICE_DIR}/service.conf"
+source "${SERVICE_DIR}/service.conf"
 
 mkdir -p "${VAR_DIR}"
 mkdir -p "${LOG_DIR}"
@@ -16,13 +16,13 @@ mkdir -p "${PID_DIR}"
 
 function get_log_dir () (
     local service=$1
-    . $service NOOP
+    source $service NOOP
     [ "$SERVICE_LOG_DIR" ] && echo "$SERVICE_LOG_DIR"
 )
 
 function get_log_file () (
     local service=$1
-    . $service NOOP
+    source $service NOOP
     [ "$SERVICE_LOG_FILE" ] && echo "$SERVICE_LOG_FILE"
 )
 

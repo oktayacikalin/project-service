@@ -7,7 +7,7 @@
 # @license   MIT (LICENSE.txt)
 
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
-[ -z "$BASE_DIR" ] && . "${SERVICE_DIR}/service.conf"
+[ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
 [ -z "$NGINX_DAEMON" ] && NGINX_DAEMON="/usr/sbin/nginx"
 [ -z "$NGINX_CONFIG" ] && NGINX_CONFIG="etc/nginx/nginx.conf"

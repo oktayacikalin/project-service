@@ -7,7 +7,7 @@
 # @license   MIT (LICENSE.txt)
 
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
-[ -z "$BASE_DIR" ] && . "${SERVICE_DIR}/service.conf"
+[ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
 [ -z "$VARNISH_PID" ] && VARNISH_PID="${PID_DIR}/varnishd.pid"
 [ -z "$VARNISH_LIB" ] && VARNISH_LIB="${VAR_DIR}/lib/varnish"
