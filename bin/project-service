@@ -13,70 +13,34 @@ mkdir -p "${VAR_DIR}"
 mkdir -p "${LOG_DIR}"
 mkdir -p "${PID_DIR}"
 
-function get_log_dir () (
-    local service=$1
-    source $service NOOP
-    [ "$SERVICE_LOG_DIR" ] && echo "$SERVICE_LOG_DIR"
-)
+source "${SERVICE_ROOT_DIR}/lib/service.get_log_dir.sh"
+source "${SERVICE_ROOT_DIR}/lib/service.get_log_file.sh"
+source "${SERVICE_ROOT_DIR}/lib/service.get_commands.sh"
+source "${SERVICE_ROOT_DIR}/lib/array.unique.sh"
+source "${SERVICE_ROOT_DIR}/lib/array.contains.sh"
 
-function get_log_file () (
-    local service=$1
-    source $service NOOP
-    [ "$SERVICE_LOG_FILE" ] && echo "$SERVICE_LOG_FILE"
-)
+ALL_SERVICES=$(find "${SERVICE_ROOT_DIR}/" -name "*.service")
 
-function unique () {
-    local items=($@)
-    OLDIFS="$IFS"
-    IFS=$'\n'
-    items=(`for R in "${items[@]}" ; do echo "$R" ; done | sort -du`)
-    IFS="$OLDIFS"
-    echo ${items[@]}
-}
-
-function get_commands () {
-    local service=$1
-    local pattern_a="'[^']+'"
-    local pattern_b='"[^"]+"'
-    local squote="'"
-    local dquote='"'
-    local commands=()
-    for base in $(grep -oE '^\s*\. .*.service.*$' $service | cut -d'.' -f2- | tr -d '"' | tr -d "'"); do
-        local source=${base//\$\{SERVICE_DIR\}/${SERVICE_DIR}}
-        local base_commands=($(grep -oE "^\s+($pattern_a|$pattern_b)\)" $source |
-                             sed "s![$squote$dquote]!!g" | tr -d ' ' | cut -d')' -f1))
-        commands+=(${base_commands[@]})
-    done
-    local local_commands=($(grep -oE "^\s+($pattern_a|$pattern_b)\)" $service |
-                          sed "s![$squote$dquote]!!g" | tr -d ' ' | cut -d')' -f1))
-    commands+=(${local_commands[@]})
-    unique ${commands[@]}
-}
-
-function contains_element () {
-    local elm
-    for elm in ${@:2}; do
-        [[ "$elm" == "$1" ]] && return 0
-    done
-    return 1
-}
+# TODO Implement ACTIVE_SERVICES services by filtering them from ALL_SERVICES.
+ACTIVE_SERVICES=$(find "${SERVICE_DIR}/" -name "*.service")
 
 function handle_action () {
-    COMMAND=$1
+    local COMMAND=$1
     shift
 
-    REQUESTED_SERVICES=$@
+    local REQUESTED_SERVICES=$@
+    local AFFECTED_SERVICES
 
     [ -z "$REQUESTED_SERVICES" ] && {
         AFFECTED_SERVICES=$ACTIVE_SERVICES
     } || {
         AFFECTED_SERVICES=()
         for request in $REQUESTED_SERVICES; do
-            [ "$request" = "all" ] && {
+            if [ "$request" = "all" ]; then
                 AFFECTED_SERVICES+=($ACTIVE_SERVICES)
                 continue
-            }
-            found=0
+            fi
+            local found=0
             for service in $ACTIVE_SERVICES; do
                 [ "$(basename $service)" = "${request}.service" ] && {
                     found=1
@@ -90,7 +54,7 @@ function handle_action () {
         done
     }
 
-    AFFECTED_SERVICES=$(unique ${AFFECTED_SERVICES[@]})
+    AFFECTED_SERVICES=($(array.unique "${AFFECTED_SERVICES[@]}"))
 
     # TODO project.service restart:nginx,php5-fpm,varnish,varnish produces duplicates
     # echo ${AFFECTED_SERVICES[@]}
@@ -98,15 +62,15 @@ function handle_action () {
 
     case "$COMMAND" in
         'tail')
-            log_files=()
+            local log_files=()
             for service in ${AFFECTED_SERVICES[@]}; do
-                log_dir=$(get_log_dir "$service")
+                local log_dir=$(service.get_log_dir "$service")
                 [ "$log_dir" ] && {
                     for log_file in $(find -L "${log_dir}/" -iname '*.log' -exec echo "'{}'" +); do
                         log_files+=("$log_file")
                     done
                 }
-                log_file=$(get_log_file "$service")
+                local log_file=$(service.get_log_file "$service")
                 [ "$log_file" ] && {
                     log_files+=("$log_file")
                 }
@@ -116,7 +80,7 @@ function handle_action () {
 
         'help')
             for service in ${AFFECTED_SERVICES[@]}; do
-                commands=$(get_commands "$service")
+                commands=$(service.get_commands "$service")
                 commands=($(echo "$commands" | sed 's!NOOP!!g'))
                 [ "$commands" ] && {
                     name=$(basename "$service")
@@ -127,12 +91,12 @@ function handle_action () {
 
         *)
             for service in ${AFFECTED_SERVICES[@]}; do
-                commands=$(get_commands $service)
-                contains_element "$COMMAND" "${commands[@]}" && {
-                    name=$(basename "$service")
+                local commands=$(service.get_commands $service)
+                array.contains "$COMMAND" "${commands[@]}" && {
+                    local name=$(basename "$service")
                     echo -n "Executing $COMMAND on ${name%.*}: "
                     "$service" "$COMMAND" && echo "OK" || {
-                        err=$?
+                        local err=$?
                         case "$err" in
                             97) echo "OK / NOOP";;  # already started
                             98) echo "OK / NOOP";;  # already stopped
@@ -145,11 +109,6 @@ function handle_action () {
         ;;
     esac
 }
-
-ALL_SERVICES=$(find "${SERVICE_ROOT_DIR}/" -name "*.service")
-
-# TODO Implement ACTIVE_SERVICES services by filtering them from ALL_SERVICES.
-ACTIVE_SERVICES=$(find "${SERVICE_DIR}/" -name "*.service")
 
 for action in $@; do
     action=($(tr ':' ' ' <<< $action))
