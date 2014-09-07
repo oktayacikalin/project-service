@@ -6,8 +6,7 @@
 # @copyright Oktay Acikalin
 # @license   MIT (LICENSE.txt)
 
-PROJECT_DIR=$(readlink -f $(dirname $0)/../)
-export SERVICE_DIR="${PROJECT_DIR}/service"
+export SERVICE_DIR="$(readlink -f $(dirname $0)/../service)"
 source "${SERVICE_DIR}/service.conf"
 
 mkdir -p "${VAR_DIR}"
@@ -147,11 +146,10 @@ function handle_action () {
     esac
 }
 
-ALL_SERVICES=$(find "${PROJECT_DIR}/service/" -name "*.service")
+ALL_SERVICES=$(find "${SERVICE_ROOT_DIR}/" -name "*.service")
 
 # TODO Implement ACTIVE_SERVICES services by filtering them from ALL_SERVICES.
-
-ACTIVE_SERVICES=$ALL_SERVICES
+ACTIVE_SERVICES=$(find "${SERVICE_DIR}/" -name "*.service")
 
 for action in $@; do
     action=($(tr ':' ' ' <<< $action))

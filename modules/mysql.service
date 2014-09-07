@@ -57,7 +57,7 @@ function wait () {
 function ensure_innodb_barracuda_config () {
     [ -e "${BASE_DIR}/etc/mysql/conf.d/innodb_barracuda_format.cnf" ] || {
         echo -n ' Adding symlink for using InnoDB Barracuda format... '
-        ln -s "../../../service/.root/etc/mysql/conf.d/innodb_barracuda_format.cnf" \
+        ln -s "${SERVICE_ROOT_DIR}/etc/mysql/conf.d/innodb_barracuda_format.cnf" \
             "${BASE_DIR}/etc/mysql/conf.d/innodb_barracuda_format.cnf"
     }
 }
