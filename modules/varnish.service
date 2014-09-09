@@ -13,7 +13,8 @@
 [ -z "$VARNISH_LIB" ] && VARNISH_LIB="${VAR_DIR}/lib/varnish"
 [ -z "$VARNISH_VCL" ] && VARNISH_VCL="${BASE_DIR}/etc/varnish/varnish.vcl"
 [ -z "$VARNISH_MEM" ] && VARNISH_MEM="malloc,10M"
-[ -z "$VARNISH_HOST" ] && VARNISH_HOST="project.ld:7002"
+[ -z "$VARNISH_HOST" ] && VARNISH_HOST="${BASE_DOMAIN}"
+[ -z "$VARNISH_PORT" ] && VARNISH_PORT=7002
 [ -z "$VARNISH_PARAMS" ] && VARNISH_PARAMS=vcl_dir="${BASE_DIR}/etc/varnish"
 
 SERVICE_LOG_FILE="${LOG_DIR}/varnishd.log"
@@ -34,7 +35,7 @@ case "$1" in
             running=$(ps aux | grep "$(cat "${VARNISH_PID}")" | grep -v grep)
             [ -n "$running" ] && exit 97
         } || {
-            varnishd -P "${VARNISH_PID}" -f "${VARNISH_VCL}" -n "${VARNISH_LIB}" -s $VARNISH_MEM -a $VARNISH_HOST -p ${VARNISH_PARAMS} >> "$SERVICE_LOG_FILE" 2>&1
+            varnishd -P "${VARNISH_PID}" -f "${VARNISH_VCL}" -n "${VARNISH_LIB}" -s $VARNISH_MEM -a $VARNISH_HOST:$VARNISH_PORT -p ${VARNISH_PARAMS} >> "$SERVICE_LOG_FILE" 2>&1
         }
     ;;
 

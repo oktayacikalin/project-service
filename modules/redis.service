@@ -10,7 +10,7 @@
 [ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
 [ -z "$REDIS_PID" ] && REDIS_PID="${PID_DIR}/redis.pid"
-[ -z "$REDIS_HOST" ] && REDIS_HOST="project.ld"
+[ -z "$REDIS_HOST" ] && REDIS_HOST="${BASE_DOMAIN}"
 [ -z "$REDIS_PORT" ] && REDIS_PORT="6002"
 [ -z "$REDIS_LOG" ] && REDIS_LOG="${LOG_DIR}/redis.log"
 [ -z "$REDIS_CONFIG" ] && REDIS_CONFIG="
