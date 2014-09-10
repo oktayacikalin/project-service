@@ -1,0 +1,10 @@
+var.default MYSQL_HOST "${BASE_DOMAIN}"
+var.default MYSQL_PORT 4002
+var.default MYSQL_USER "root"
+var.default MYSQL_PASS "root"
+var.default MYSQL_SOCKET "${PID_DIR}/mysqld.sock"
+var.default MYSQL_PID "${PID_DIR}/mysqld.pid"
+var.default MYSQL_DATA_DIR "${VAR_DIR}/lib/mysql"
+var.default MYSQL_ERROR_LOG "${LOG_DIR}/mysql-error.log"
+var.default MYSQL_CONF "${MYSQL_DATA_DIR}/mysql.conf"
+var.default MYSQL_ADMIN_CONF "${MYSQL_DATA_DIR}/mysql-admin.conf"

@@ -9,18 +9,10 @@
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
 [ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
-[ -z "$MAGENTO_HOME" ] && MAGENTO_HOME="${BASE_DIR}/shop"
-[ -z "$MAGENTO_SHELL_INDEXER" ] && MAGENTO_SHELL_INDEXER="shell/indexer.php"
-[ -z "$MAGENTO_SHELL_MIGRATE" ] && MAGENTO_SHELL_MIGRATE="${BASE_DIR}/bin/magento-migrate.php"
-[ -z "$MAGENTO_SHELL_EXPORT_TRANSLATIONS" ] && MAGENTO_SHELL_EXPORT_TRANSLATIONS="${BASE_DIR}/bin/magento-export-inline-translations.php"
+source "${SERVICE_ROOT_DIR}/lib/var.default.sh"
+source "${SERVICE_ROOT_DIR}/etc/default/magento.sh"
 
 SERVICE_LOG_DIR="${MAGENTO_HOME}/var/log"
-
-[ -z "$MAGE_FILE" ] && MAGE_FILE="${MAGENTO_HOME}/app/code/core/Mage/Core/Model/App.php"
-[ -z "$MAGE_COMMANDS" ] && MAGE_COMMANDS=(
-    Mage_Core_Model_Resource_Setup::applyAllUpdates
-    Mage_Core_Model_Resource_Setup::applyAllDataUpdates
-)
 
 case "$1" in
     'clear-cache')

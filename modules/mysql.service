@@ -9,16 +9,8 @@
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
 [ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
-[ -z "$MYSQL_HOST" ] && MYSQL_HOST="${BASE_DOMAIN}"
-[ -z "$MYSQL_PORT" ] && MYSQL_PORT=4002
-[ -z "$MYSQL_USER" ] && MYSQL_USER="root"
-[ -z "$MYSQL_PASS" ] && MYSQL_PASS="root"
-[ -z "$MYSQL_SOCKET" ] && MYSQL_SOCKET="${PID_DIR}/mysqld.sock"
-[ -z "$MYSQL_PID" ] && MYSQL_PID="${PID_DIR}/mysqld.pid"
-[ -z "$MYSQL_DATA_DIR" ] && MYSQL_DATA_DIR="${VAR_DIR}/lib/mysql"
-[ -z "$MYSQL_ERROR_LOG" ] && MYSQL_ERROR_LOG="${LOG_DIR}/mysql-error.log"
-[ -z "$MYSQL_CONF" ] && MYSQL_CONF="${MYSQL_DATA_DIR}/mysql.conf"
-[ -z "$MYSQL_ADMIN_CONF" ] && MYSQL_ADMIN_CONF="${MYSQL_DATA_DIR}/mysql-admin.conf"
+source "${SERVICE_ROOT_DIR}/lib/var.default.sh"
+source "${SERVICE_ROOT_DIR}/etc/default/mysql.sh"
 
 SERVICE_LOG_FILE="$MYSQL_ERROR_LOG"
 

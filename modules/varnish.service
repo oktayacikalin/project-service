@@ -9,13 +9,8 @@
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
 [ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
-[ -z "$VARNISH_PID" ] && VARNISH_PID="${PID_DIR}/varnishd.pid"
-[ -z "$VARNISH_LIB" ] && VARNISH_LIB="${VAR_DIR}/lib/varnish"
-[ -z "$VARNISH_VCL" ] && VARNISH_VCL="${BASE_DIR}/etc/varnish/varnish.vcl"
-[ -z "$VARNISH_MEM" ] && VARNISH_MEM="malloc,10M"
-[ -z "$VARNISH_HOST" ] && VARNISH_HOST="${BASE_DOMAIN}"
-[ -z "$VARNISH_PORT" ] && VARNISH_PORT=7002
-[ -z "$VARNISH_PARAMS" ] && VARNISH_PARAMS=vcl_dir="${BASE_DIR}/etc/varnish"
+source "${SERVICE_ROOT_DIR}/lib/var.default.sh"
+source "${SERVICE_ROOT_DIR}/etc/default/varnish.sh"
 
 SERVICE_LOG_FILE="${LOG_DIR}/varnishd.log"
 
