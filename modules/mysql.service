@@ -172,7 +172,7 @@ case "$1" in
 
     'mysql-shell')
         echo  # Put the prompt into a new line.
-        mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}"
+        mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" ${@:2}
     ;;
 
     'mytop')
