@@ -119,10 +119,10 @@ function handle_action () {
             for service in ${AFFECTED_SERVICES[@]}; do
                 commands=$(service.get_commands "$service")
                 commands=($(echo "$commands" | sed 's!NOOP!!g'))
-                [ "$commands" ] && {
+                if [ "$commands" ]; then
                     name=$(basename "$service")
                     echo "${name%.*}: ${commands[@]}"
-                }
+                fi
             done
         ;;
 
@@ -141,7 +141,7 @@ function handle_action () {
                             *) echo "FAILED";;
                         esac
                     }
-                }
+                } || true
             done
         ;;
     esac
