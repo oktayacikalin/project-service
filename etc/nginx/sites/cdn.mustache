@@ -19,7 +19,19 @@ server {
     access_log {{project_root}}/var/log/nginx/cdn[$host].access.log;
     error_log  {{project_root}}/var/log/nginx/cdn.error.log;
 
+    {{#cdn_local_locations}}
+    location {{.}} {
+        root {{project_root}}/{{cdn_local_root}};
+        try_files $uri @cdn;
+    }
+    {{/cdn_local_locations}}
+
     location / {
+        error_page 599 = @cdn;
+        return 599;
+    }
+
+    location @cdn {
         proxy_cache cdn;
         # proxy_cache_key "$host$request_uri$cookie_user";
         proxy_cache_valid 404 503 0;

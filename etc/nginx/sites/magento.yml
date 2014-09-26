@@ -23,9 +23,13 @@ use_country_code_mapping: false
 
 varnish_host: "http://project.ld:7002"
 
-cdn_remote_hosts: ["images.yourcdn.com"]
+cdn_remote_hosts: ["static.yourcdn.com"]
 cdn_local_host: cdn.project.ld
 use_cdn_rewrites: false
+cdn_local_root: "magento"
+cdn_local_locations: [
+	"/media/",
+]
 
 log_identifier: magento
 
