@@ -18,6 +18,7 @@ source "${SERVICE_ROOT_DIR}/lib/service.get_log_file.sh"
 source "${SERVICE_ROOT_DIR}/lib/service.get_commands.sh"
 source "${SERVICE_ROOT_DIR}/lib/array.unique.sh"
 source "${SERVICE_ROOT_DIR}/lib/array.contains.sh"
+source "${SERVICE_ROOT_DIR}/lib/array.index.sh"
 source "${SERVICE_ROOT_DIR}/lib/file.get_relative_path.sh"
 
 ALL_SERVICES=$(find "${SERVICE_ROOT_DIR}/" -name "*.service")
@@ -26,37 +27,39 @@ ALL_SERVICES=$(find "${SERVICE_ROOT_DIR}/" -name "*.service")
 ACTIVE_SERVICES=$(find "${SERVICE_DIR}/" -name "*.service")
 
 function handle_action () {
-    local COMMAND=$1
+    local command=$1
+    local params=$2
+    shift
     shift
 
     local REQUESTED_SERVICES=$@
     local AFFECTED_SERVICES
 
-    [ -z "$REQUESTED_SERVICES" ] && {
+    if [ -z "$REQUESTED_SERVICES" ]; then
         AFFECTED_SERVICES=$ACTIVE_SERVICES
-    } || {
+    else
         AFFECTED_SERVICES=()
         for request in $REQUESTED_SERVICES; do
-            if [ "$COMMAND" = "enable-service" ] ; then
+            if [ "$command" = "enable-service" ] ; then
                 if [ "$request" = "all" ]; then
                     echo "Please specify which services to enable!"
                     exit 1
                 fi
                 local found=0
                 for service in $ALL_SERVICES; do
-                    [ "$(basename $service)" = "${request}.service" ] && {
+                    if [ "$(basename $service)" = "${request}.service" ]; then
                         for service_ in $ACTIVE_SERVICES; do
-                            [ "$(basename $service_)" = "${request}.service" ] && {
+                            if [ "$(basename $service_)" = "${request}.service" ]; then
                                 echo "Service already enabled: $request"
                                 found=1
                                 break
-                            }
+                            fi
                         done
                         if [ "$found" = 1 ] ; then
                             continue
                         fi
                         AFFECTED_SERVICES+=($service)
-                    }
+                    fi
                 done
                 continue
             fi
@@ -68,17 +71,17 @@ function handle_action () {
 
             local found=0
             for service in $ACTIVE_SERVICES; do
-                [ "$(basename $service)" = "${request}.service" ] && {
+                if [ "$(basename $service)" = "${request}.service" ]; then
                     found=1
                     AFFECTED_SERVICES+=($service)
-                }
+                fi
             done
-            [ "$found" = 0 ] && {
+            if [ "$found" = 0 ]; then
                 echo "Service not found: $request"
                 exit 1
-            }
+            fi
         done
-    }
+    fi
 
     AFFECTED_SERVICES=($(array.unique "${AFFECTED_SERVICES[@]}"))
 
@@ -86,20 +89,20 @@ function handle_action () {
     # echo ${AFFECTED_SERVICES[@]}
     # exit
 
-    case "$COMMAND" in
+    case "$command" in
         'tail')
             local log_files=()
             for service in ${AFFECTED_SERVICES[@]}; do
                 local log_dir=$(service.get_log_dir "$service")
-                [ "$log_dir" ] && {
+                if [ "$log_dir" ]; then
                     for log_file in $(find -L "${log_dir}/" -iname '*.log' -exec echo "'{}'" +); do
                         log_files+=("$log_file")
                     done
-                }
+                fi
                 local log_file=$(service.get_log_file "$service")
-                [ "$log_file" ] && {
+                if [ "$log_file" ]; then
                     log_files+=("$log_file")
-                }
+                fi
             done
             tail -F -n0 ${log_files[@]}
         ;;
@@ -129,10 +132,12 @@ function handle_action () {
         *)
             for service in ${AFFECTED_SERVICES[@]}; do
                 local commands=$(service.get_commands $service)
-                array.contains "$COMMAND" "${commands[@]}" && {
+                if array.contains "$command" "${commands[@]}"; then
                     local name=$(basename "$service")
-                    echo -n "Executing $COMMAND on ${name%.*}: "
-                    "$service" "$COMMAND" && echo "OK" || {
+                    echo -n "Executing $command on ${name%.*}: "
+                    if "$service" "$command" $params; then
+                        echo "OK"
+                    else
                         local err=$?
                         case "$err" in
                             97) echo "OK / NOOP";;  # already started
@@ -140,18 +145,27 @@ function handle_action () {
                             99) echo "N/A";;
                             *) echo "FAILED";;
                         esac
-                    }
-                } || true
+                    fi
+                fi
             done
         ;;
     esac
 }
 
-for action in $@; do
-    action=($(tr ':' ' ' <<< $action))
+if array.contains "--"  "$@"; then
+    index=$(array.index "--" "$@")
+    actions=("${@:1:$index}")
+    params=${@:$(expr $index + 2)}
+else
+    actions=("$@")
+    params=""
+fi
+
+for action in ${actions[@]}; do
+    action=($(tr ':' ' ' <<< ${action}))
     commands=($(tr ',' ' ' <<< ${action[0]}))
     services=($(tr ',' ' ' <<< ${action[1]}))
     for command in ${commands[@]}; do
-        handle_action $command ${services[@]}
+        handle_action "${command}" "${params}" ${services[@]}
     done
 done
