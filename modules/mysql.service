@@ -17,6 +17,7 @@ SERVICE_LOG_FILE="$MYSQL_ERROR_LOG"
 mkdir -p "$(dirname ${MYSQL_SOCKET})"
 mkdir -p "${MYSQL_DATA_DIR}"
 mkdir -p "$(dirname ${MYSQL_ERROR_LOG})"
+mkdir -p "${MYSQL_BACKUP_DIR}"
 
 function fill () {
     local template=$1
@@ -60,7 +61,7 @@ function ensure_innodb_barracuda_online () {
     SET GLOBAL innodb_file_format_max = Barracuda;
     # SET GLOBAL innodb_compression_level = 6;
     "
-    mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" -e "$SQL"
+    mysql ${MYSQL_CONNECTION_PARAMS} -e "$SQL"
 }
 
 function set_innodb_table_row_format () {
@@ -72,14 +73,14 @@ function set_innodb_table_row_format () {
         FROM TABLES
         WHERE ENGINE = \"InnoDB\";
     "
-    SQL=$(mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" --batch --skip-column-names -e "$SQL")
+    SQL=$(mysql ${MYSQL_CONNECTION_PARAMS} --batch --skip-column-names -e "$SQL")
     readarray -t SQL <<<"$SQL"
 
     echo -n " Altering ${#SQL[@]} tables... "
 
     for statement in "${SQL[@]}"; do
         echo -n '.'
-        mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" -e "${statement}"
+        mysql ${MYSQL_CONNECTION_PARAMS} -e "${statement}"
     done
 }
 
@@ -91,14 +92,14 @@ function set_innodb_table_row_format () {
 #         FROM TABLES
 #         WHERE ENGINE = \"InnoDB\";
 #     "
-#     SQL=$(mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" --batch --skip-column-names -e "$SQL")
+#     SQL=$(mysql ${MYSQL_CONNECTION_PARAMS} --batch --skip-column-names -e "$SQL")
 #     readarray -t SQL <<<"$SQL"
 
 #     echo -n " Altering ${#SQL[@]} tables... "
 
 #     for statement in "${SQL[@]}"; do
 #         echo -n '.'
-#         mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" -e "${statement}"
+#         mysql ${MYSQL_CONNECTION_PARAMS} -e "${statement}"
 #     done
 # }
 
@@ -110,16 +111,33 @@ function set_innodb_table_row_format () {
 #         FROM TABLES
 #         WHERE ENGINE = \"InnoDB\";
 #     "
-#     SQL=$(mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" --batch --skip-column-names -e "$SQL")
+#     SQL=$(mysql ${MYSQL_CONNECTION_PARAMS} --batch --skip-column-names -e "$SQL")
 #     readarray -t SQL <<<"$SQL"
 
 #     echo -n " Altering ${#SQL[@]} tables... "
 
 #     for statement in "${SQL[@]}"; do
 #         echo -n '.'
-#         mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" -e "${statement}"
+#         mysql ${MYSQL_CONNECTION_PARAMS} -e "${statement}"
 #     done
 # }
+
+function mysql.list_tables_like () {
+    local database="$1"
+    local pattern="$2"
+    local sql="
+        SET group_concat_max_len = 10240;
+        SELECT GROUP_CONCAT(table_name separator ' ')
+        FROM information_schema.tables WHERE table_schema='${database}'
+        AND table_name LIKE '${pattern}'
+    "
+    local output=$(mysql ${MYSQL_CONNECTION_PARAMS} -AN -e "${sql}")
+    if [ "${output}" != "NULL" ]; then
+        echo "${output}"
+    else
+        echo "INFO: No tables found in database ${database} like: ${pattern}" >&2
+    fi
+}
 
 case "$1" in
     'disable-init-script')
@@ -172,7 +190,7 @@ case "$1" in
 
     'mysql-shell')
         echo  # Put the prompt into a new line.
-        mysql --defaults-extra-file="${MYSQL_ADMIN_CONF}" ${@:2}
+        mysql ${MYSQL_CONNECTION_PARAMS} ${@:2}
     ;;
 
     'mytop')
@@ -228,6 +246,76 @@ case "$1" in
 
     #     echo -n ' '
     # ;;
+
+    'backup')
+        requested_database="$2"
+        requested_tables=("${@:3}")
+        databases=($(echo "show databases;" | mysql ${MYSQL_CONNECTION_PARAMS} -B -N | grep -v -E '^(information_schema|mysql|performance_schema)$'))
+        for database in "${databases[@]}"; do
+            if [ -n "${requested_database}" ] && [ "${database}" != "${requested_database}" ]; then
+                continue
+            fi
+            echo -n "${database}... "
+            backup_dir="${MYSQL_BACKUP_DIR}/${database}"
+            if [ -z "${requested_tables}" ]; then
+                rm -rf "${backup_dir}"
+            fi
+            mkdir -p "${backup_dir}"
+            tables=()
+            if [ -n "${requested_tables}" ]; then
+                for pattern in "${requested_tables[@]}"; do
+                    tables+=$(mysql.list_tables_like "${database}" "${pattern}")
+                done
+                if [ -z "${tables[@]}" ]; then
+                    echo "WARNING: None of the requested tables could be found. Avoiding complete dump!"
+                    continue
+                fi
+            fi
+            mysqldump ${MYSQL_CONNECTION_PARAMS} -T "${backup_dir}" "${database}" ${tables[@]}
+        done
+    ;;
+
+    'restore')
+        # https://mariadb.com/kb/en/mariadb/documentation/optimization-and-tuning/query-optimizations/how-to-quickly-insert-data-into-mariadb/
+        requested_database="$2"
+        # requested_tables=("${@:3}")
+        prepare_sql_file="${SERVICE_ROOT_DIR}/scripts/mysql-import-optimizations.sql"
+        databases=($(ls "${MYSQL_BACKUP_DIR}"))
+        for database in "${databases[@]}"; do
+            if [ -n "${requested_database}" ] && [ "${database}" != "${requested_database}" ]; then
+                continue
+            fi
+            echo  # Put the prompt into a new line.
+            echo "Restoring database ${database}... "
+            backup_dir="${MYSQL_BACKUP_DIR}/${database}"
+            sql_files=($(ls -rt "${backup_dir}"/*.sql))
+            data_files=($(ls -rt "${backup_dir}"/*.txt))
+            # TODO should only not recreate when giving a table pattern...
+            if [ -z "${requested_database}" ]; then
+                mysqladmin ${MYSQL_CONNECTION_PARAMS} -f drop "${database}" > /dev/null
+                mysqladmin ${MYSQL_CONNECTION_PARAMS} create "${database}"
+            fi
+            echo -n "Creating tables... "
+            {
+                cat "${prepare_sql_file}"
+                for file in "${sql_files[@]}"; do
+                    cat "${file}"
+                    echo -n "." >&2
+                done
+            } | mysql ${MYSQL_CONNECTION_PARAMS} "${database}"
+            echo  # Put the prompt into a new line.
+            echo "Importing data... "
+            for file in "${data_files[@]}"; do
+                table_name=$(basename "${file}")
+                table_name=${table_name%%.*}
+                {
+                    cat "${prepare_sql_file}"
+                    echo "LOAD DATA INFILE '${file}' INTO TABLE ${table_name} CHARACTER SET UTF8;"
+                } | mysql ${MYSQL_CONNECTION_PARAMS} "${database}"
+                echo
+            done | pv -l -s ${#data_files[@]} > /dev/null
+        done
+    ;;
 
     'NOOP')
         # NOOP
