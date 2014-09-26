@@ -1,4 +1,5 @@
 var.default MAGENTO_HOME "${BASE_DIR}/shop"
+var.default MAGENTO_CRON_PHP "cron.php"
 var.default MAGENTO_SHELL_INDEXER "shell/indexer.php"
 var.default MAGENTO_SHELL_MIGRATE "${SERVICE_ROOT_DIR}/scripts/magento-migrate.php"
 var.default MAGENTO_SHELL_EXPORT_TRANSLATIONS "${SERVICE_ROOT_DIR}/scripts/magento-export-inline-translations.php"
