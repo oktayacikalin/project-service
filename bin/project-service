@@ -9,10 +9,6 @@
 export SERVICE_DIR="$(readlink -f $(dirname $0)/../service)"
 source "${SERVICE_DIR}/service.conf"
 
-mkdir -p "${VAR_DIR}"
-mkdir -p "${LOG_DIR}"
-mkdir -p "${PID_DIR}"
-
 source "${SERVICE_ROOT_DIR}/lib/service.get_log_dir.sh"
 source "${SERVICE_ROOT_DIR}/lib/service.get_log_file.sh"
 source "${SERVICE_ROOT_DIR}/lib/service.get_commands.sh"
@@ -26,7 +22,7 @@ ALL_SERVICES=$(find "${SERVICE_ROOT_DIR}/" -name "*.service")
 # TODO Implement ACTIVE_SERVICES services by filtering them from ALL_SERVICES.
 ACTIVE_SERVICES=$(find "${SERVICE_DIR}/" -name "*.service")
 
-function handle_action () {
+function handle_command () {
     local command=${!1}
     local params=("${!2}")
     local REQUESTED_SERVICES=${!3}
@@ -146,6 +142,8 @@ function handle_action () {
     esac
 }
 
+mkdir -p "${VAR_DIR}" "${LOG_DIR}" "${PID_DIR}"
+
 if array.contains "--"  "$@"; then
     index=$(array.index "--" "$@")
     actions=("${@:1:$index}")
@@ -160,6 +158,6 @@ for action in ${actions[@]}; do
     commands=($(tr ',' ' ' <<< ${action[0]}))
     services=($(tr ',' ' ' <<< ${action[1]}))
     for command in ${commands[@]}; do
-        handle_action command params[@] services[@]
+        handle_command command params[@] services[@]
     done
 done
