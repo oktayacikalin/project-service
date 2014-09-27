@@ -82,10 +82,6 @@ function handle_action () {
 
     AFFECTED_SERVICES=($(array.unique "${AFFECTED_SERVICES[@]}"))
 
-    # TODO project.service restart:nginx,php5-fpm,varnish,varnish produces duplicates
-    # echo ${AFFECTED_SERVICES[@]}
-    # exit
-
     case "$command" in
         'tail')
             local log_files=()
