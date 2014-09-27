@@ -27,12 +27,9 @@ ALL_SERVICES=$(find "${SERVICE_ROOT_DIR}/" -name "*.service")
 ACTIVE_SERVICES=$(find "${SERVICE_DIR}/" -name "*.service")
 
 function handle_action () {
-    local command=$1
-    local params=$2
-    shift
-    shift
-
-    local REQUESTED_SERVICES=$@
+    local command=${!1}
+    local params=("${!2}")
+    local REQUESTED_SERVICES=${!3}
     local AFFECTED_SERVICES
 
     if [ -z "$REQUESTED_SERVICES" ]; then
@@ -112,7 +109,7 @@ function handle_action () {
             for service in ${AFFECTED_SERVICES[@]}; do
                 local relpath=$(file.get_relative_path "$SERVICE_DIR" "$service")
                 ln -s "${relpath}"
-                name=$(basename "$service")
+                name=${service##*/}
                 echo "Enabled service: ${name%.*}"
             done
             popd > /dev/null
@@ -123,7 +120,7 @@ function handle_action () {
                 commands=$(service.get_commands "$service")
                 commands=($(echo "$commands" | sed 's!NOOP!!g'))
                 if [ "$commands" ]; then
-                    name=$(basename "$service")
+                    name=${service##*/}
                     echo "${name%.*}: ${commands[@]}"
                     echo
                 fi
@@ -134,9 +131,9 @@ function handle_action () {
             for service in ${AFFECTED_SERVICES[@]}; do
                 local commands=$(service.get_commands $service)
                 if array.contains "$command" "${commands[@]}"; then
-                    local name=$(basename "$service")
+                    local name=${service##*/}
                     echo -n "Executing $command on ${name%.*}: "
-                    if "$service" "$command" $params; then
+                    if "$service" "$command" "${params[@]}"; then
                         echo "OK"
                     else
                         local err=$?
@@ -156,7 +153,7 @@ function handle_action () {
 if array.contains "--"  "$@"; then
     index=$(array.index "--" "$@")
     actions=("${@:1:$index}")
-    params=${@:$(expr $index + 2)}
+    params=("${@:$(expr $index + 2)}")
 else
     actions=("$@")
     params=""
@@ -167,6 +164,6 @@ for action in ${actions[@]}; do
     commands=($(tr ',' ' ' <<< ${action[0]}))
     services=($(tr ',' ' ' <<< ${action[1]}))
     for command in ${commands[@]}; do
-        handle_action "${command}" "${params}" ${services[@]}
+        handle_action command params[@] services[@]
     done
 done
