@@ -125,6 +125,7 @@ function handle_action () {
                 if [ "$commands" ]; then
                     name=$(basename "$service")
                     echo "${name%.*}: ${commands[@]}"
+                    echo
                 fi
             done
         ;;
