@@ -91,7 +91,7 @@ case "$1" in
         echo  # Put the prompt into a new line.
         magerun dev:template-hints
         magerun dev:template-hints-blocks
-        magerun cache:clean block_html
+        magerun cache:clean block_html,full_page
         popd > /dev/null
     ;;
 
