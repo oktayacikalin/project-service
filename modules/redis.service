@@ -14,10 +14,10 @@ source "${SERVICE_ROOT_DIR}/etc/default/redis.sh"
 
 SERVICE_LOG_FILE="$REDIS_LOG"
 
-mkdir -p "${BASE_DIR}/var/lib/redis"
+mkdir -p "${LIB_DIR}/redis"
 
-EXEC="${BASE_DIR}/bin/redis-server"
-CLIEXEC="${BASE_DIR}/bin/redis-cli"
+EXEC="${BIN_DIR}/redis-server"
+CLIEXEC="${BIN_DIR}/redis-cli"
 
 case "$1" in
     'start')

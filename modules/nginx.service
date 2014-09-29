@@ -16,8 +16,8 @@ TIMEOUT=30
 
 SERVICE_LOG_DIR="${LOG_DIR}/nginx"
 
-mkdir -p "${BASE_DIR}/var/lib/nginx" "${LOG_DIR}/nginx"
-mkdir -p "${BASE_DIR}/var/cache/nginx"
+mkdir -p "${LIB_DIR}/nginx" "${LOG_DIR}/nginx"
+mkdir -p "${CACHE_DIR}/nginx"
 
 case "$1" in
     'disable-init-script')
@@ -65,7 +65,7 @@ case "$1" in
     ;;
 
     'clear-cache')
-        rm -rf "${BASE_DIR}/var/cache/nginx/*"
+        rm -rf "${CACHE_DIR}/nginx/*"
     ;;
 
     'NOOP')

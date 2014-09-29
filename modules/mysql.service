@@ -34,14 +34,14 @@ function fill () {
         <<< "${template}"
 }
 
-[ -e "${MYSQL_CONF}" ] || fill "$(cat ${BASE_DIR}/etc/mysql/mysql.conf)" > ${MYSQL_CONF}
-[ -e "${MYSQL_ADMIN_CONF}" ] || fill "$(cat ${BASE_DIR}/etc/mysql/mysql-admin.conf)" > ${MYSQL_ADMIN_CONF}
+[ -e "${MYSQL_CONF}" ] || fill "$(cat ${ETC_DIR}/mysql/mysql.conf)" > ${MYSQL_CONF}
+[ -e "${MYSQL_ADMIN_CONF}" ] || fill "$(cat ${ETC_DIR}/mysql/mysql-admin.conf)" > ${MYSQL_ADMIN_CONF}
 
 function ensure_innodb_barracuda_config () {
-    [ -e "${BASE_DIR}/etc/mysql/conf.d/innodb_barracuda_format.cnf" ] || {
+    [ -e "${ETC_DIR}/mysql/conf.d/innodb_barracuda_format.cnf" ] || {
         echo -n ' Adding symlink for using InnoDB Barracuda format... '
         ln -s "${SERVICE_ROOT_DIR}/etc/mysql/conf.d/innodb_barracuda_format.cnf" \
-            "${BASE_DIR}/etc/mysql/conf.d/innodb_barracuda_format.cnf"
+            "${ETC_DIR}/mysql/conf.d/innodb_barracuda_format.cnf"
     }
 }
 
@@ -123,8 +123,8 @@ case "$1" in
     ;;
 
     'reconfigure')
-        fill "$(cat ${BASE_DIR}/etc/mysql/mysql.conf)" > ${MYSQL_CONF}
-        fill "$(cat ${BASE_DIR}/etc/mysql/mysql-admin.conf)" > ${MYSQL_ADMIN_CONF}
+        fill "$(cat ${ETC_DIR}/mysql/mysql.conf)" > ${MYSQL_CONF}
+        fill "$(cat ${ETC_DIR}/mysql/mysql-admin.conf)" > ${MYSQL_ADMIN_CONF}
     ;;
 
     'start')

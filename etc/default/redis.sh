@@ -8,5 +8,5 @@ pidfile \"$REDIS_PID\"
 bind $REDIS_HOST
 port $REDIS_PORT
 logfile \"$REDIS_LOG\"
-dir \"${BASE_DIR}/var/lib/redis\"
+dir \"${LIB_DIR}/redis\"
 "
