@@ -54,12 +54,11 @@ function ensure_innodb_barracuda_online () {
     mysql ${MYSQL_CONNECTION_PARAMS} -e "$SQL"
 }
 
-function set_innodb_table_row_format () {
-    FORMAT=$1
-
+function _alter_tables () {
+    local modification="$1"
     SQL="
     USE INFORMATION_SCHEMA;
-    SELECT CONCAT(\"ALTER TABLE \`\", TABLE_SCHEMA,\"\`.\`\", TABLE_NAME, \"\` ROW_FORMAT=${FORMAT};\") AS MySQLCMD
+    SELECT CONCAT(\"ALTER TABLE \`\", TABLE_SCHEMA,\"\`.\`\", TABLE_NAME, \"\` ${modification};\") AS MySQLCMD
         FROM TABLES
         WHERE ENGINE = \"InnoDB\";
     "
@@ -74,42 +73,19 @@ function set_innodb_table_row_format () {
     done
 }
 
-# TODO Currently only supported by Fusion-io.
+function set_innodb_table_row_format () {
+    FORMAT=$1
+    _alter_tables "ROW_FORMAT=${FORMAT}"
+}
+
+# NOTE: AFAIK only supported by Fusion-io.
 # function enable_innodb_table_page_compression () {
-#     SQL="
-#     USE INFORMATION_SCHEMA;
-#     SELECT CONCAT(\"ALTER TABLE \`\", TABLE_SCHEMA,\"\`.\`\", TABLE_NAME, \"\` PAGE_COMPRESSED=1;\") AS MySQLCMD
-#         FROM TABLES
-#         WHERE ENGINE = \"InnoDB\";
-#     "
-#     SQL=$(mysql ${MYSQL_CONNECTION_PARAMS} --batch --skip-column-names -e "$SQL")
-#     readarray -t SQL <<<"$SQL"
-
-#     echo -n " Altering ${#SQL[@]} tables... "
-
-#     for statement in "${SQL[@]}"; do
-#         echo -n '.'
-#         mysql ${MYSQL_CONNECTION_PARAMS} -e "${statement}"
-#     done
+#     _alter_tables "PAGE_COMPRESSED=1"
 # }
 
-# TODO Currently only supported by Fusion-io.
+# NOTE: AFAIK only supported by Fusion-io.
 # function disable_innodb_table_page_compression () {
-#     SQL="
-#     USE INFORMATION_SCHEMA;
-#     SELECT CONCAT(\"ALTER TABLE \`\", TABLE_SCHEMA,\"\`.\`\", TABLE_NAME, \"\` PAGE_COMPRESSED=0;\") AS MySQLCMD
-#         FROM TABLES
-#         WHERE ENGINE = \"InnoDB\";
-#     "
-#     SQL=$(mysql ${MYSQL_CONNECTION_PARAMS} --batch --skip-column-names -e "$SQL")
-#     readarray -t SQL <<<"$SQL"
-
-#     echo -n " Altering ${#SQL[@]} tables... "
-
-#     for statement in "${SQL[@]}"; do
-#         echo -n '.'
-#         mysql ${MYSQL_CONNECTION_PARAMS} -e "${statement}"
-#     done
+#     _alter_tables "PAGE_COMPRESSED=0"
 # }
 
 function mysql.list_tables_like () {
@@ -213,7 +189,7 @@ case "$1" in
         echo -n ' '
     ;;
 
-    # TODO Currently only supported by Fusion-io.
+    # NOTE: AFAIK only supported by Fusion-io.
     # 'enable-innodb-table-page-compression')
     #     echo -n '.'
     #     ensure_innodb_barracuda_config
@@ -225,7 +201,7 @@ case "$1" in
     #     echo -n ' '
     # ;;
 
-    # TODO Currently only supported by Fusion-io.
+    # NOTE: AFAIK only supported by Fusion-io.
     # 'disable-innodb-table-page-compression')
     #     echo -n '.'
     #     ensure_innodb_barracuda_config
