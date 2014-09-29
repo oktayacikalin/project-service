@@ -9,6 +9,7 @@
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
 [ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
+source "${SERVICE_ROOT_DIR}/lib/service.run_main.sh"
 source "${SERVICE_ROOT_DIR}/lib/var.default.sh"
 source "${SERVICE_ROOT_DIR}/etc/default/redis.sh"
 
@@ -19,60 +20,66 @@ mkdir -p "${LIB_DIR}/redis"
 EXEC="${BIN_DIR}/redis-server"
 CLIEXEC="${BIN_DIR}/redis-cli"
 
-case "$1" in
-    'start')
-        if [ -f "$REDIS_PID" ]; then
-                # TODO test if PID is running and don't complain.
-                # echo "$REDIS_PID exists, process is already running or crashed"
-                exit 97
-        else
-                # echo "Starting Redis server..."
-                echo "$REDIS_CONFIG" | $EXEC -
-        fi
-    ;;
 
-    'stop')
-        if [ ! -f "$REDIS_PID" ]; then
-                # echo "$REDIS_PID does not exist, process is not running"
-                exit 98
-        else
-                PID=$(cat "$REDIS_PID")
-                # echo "Stopping ..."
-                $CLIEXEC -h $REDIS_HOST -p $REDIS_PORT shutdown
-                while [ -x /proc/${PID} ]
-                do
-                    echo "Waiting for Redis to shutdown ..."
-                    sleep 1
-                done
-                # echo "Redis stopped"
-        fi
-    ;;
+function main () {
+    case "$COMMAND" in
+        'start')
+            if [ -f "$REDIS_PID" ]; then
+                    # TODO test if PID is running and don't complain.
+                    # echo "$REDIS_PID exists, process is already running or crashed"
+                    exit 97
+            else
+                    # echo "Starting Redis server..."
+                    echo "$REDIS_CONFIG" | $EXEC -
+            fi
+        ;;
 
-    'restart')
-        $0 stop
-        RETVAL=$?
-        if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
-            $0 start
-        else
-            exit "$RETVAL"
-        fi
-    ;;
+        'stop')
+            if [ ! -f "$REDIS_PID" ]; then
+                    # echo "$REDIS_PID does not exist, process is not running"
+                    exit 98
+            else
+                    PID=$(cat "$REDIS_PID")
+                    # echo "Stopping ..."
+                    $CLIEXEC -h $REDIS_HOST -p $REDIS_PORT shutdown
+                    while [ -x /proc/${PID} ]
+                    do
+                        echo "Waiting for Redis to shutdown ..."
+                        sleep 1
+                    done
+                    # echo "Redis stopped"
+            fi
+        ;;
 
-    'clear-cache')
-        output=$($CLIEXEC -h $REDIS_HOST -p $REDIS_PORT flushall)
-        [ "$output" == "OK" ] || (echo $output ; exit 1)
-    ;;
+        'restart')
+            $0 stop
+            RETVAL=$?
+            if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+                $0 start
+            else
+                exit "$RETVAL"
+            fi
+        ;;
 
-    'redis-shell')
-        echo  # Put the prompt into a new line.
-        $CLIEXEC -h $REDIS_HOST -p $REDIS_PORT
-    ;;
+        'clear-cache')
+            output=$($CLIEXEC -h $REDIS_HOST -p $REDIS_PORT flushall)
+            [ "$output" == "OK" ] || (echo $output ; exit 1)
+        ;;
 
-    'NOOP')
-        # NOOP
-    ;;
+        'redis-shell')
+            echo  # Put the prompt into a new line.
+            $CLIEXEC -h $REDIS_HOST -p $REDIS_PORT
+        ;;
 
-    *)
-        exit 99
-    ;;
-esac
+        'NOOP')
+            # NOOP
+        ;;
+
+        *)
+            exit 99
+        ;;
+    esac
+}
+
+
+service.run_main

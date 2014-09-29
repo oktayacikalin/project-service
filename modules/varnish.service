@@ -9,6 +9,7 @@
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
 [ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
+source "${SERVICE_ROOT_DIR}/lib/service.run_main.sh"
 source "${SERVICE_ROOT_DIR}/lib/var.default.sh"
 source "${SERVICE_ROOT_DIR}/etc/default/varnish.sh"
 
@@ -16,51 +17,57 @@ SERVICE_LOG_FILE="${LOG_DIR}/varnishd.log"
 
 mkdir -p "${VARNISH_LIB}"
 
-case "$1" in
-    'disable-init-script')
-        sudo sh -c 'echo "manual" > /etc/init/varnish.override'
-    ;;
 
-    'enable-init-script')
-        sudo rm '/etc/init/varnish.override'
-    ;;
+function main () {
+    case "$COMMAND" in
+        'disable-init-script')
+            sudo sh -c 'echo "manual" > /etc/init/varnish.override'
+        ;;
 
-    'start')
-        [ -f "${VARNISH_PID}" ] && {
-            running=$(ps aux | grep "$(cat "${VARNISH_PID}")" | grep -v grep)
-            [ -n "$running" ] && exit 97
-        } || {
-            varnishd -P "${VARNISH_PID}" -f "${VARNISH_VCL}" -n "${VARNISH_LIB}" -s $VARNISH_MEM -a $VARNISH_HOST:$VARNISH_PORT -p ${VARNISH_PARAMS} >> "$SERVICE_LOG_FILE" 2>&1
-        }
-    ;;
+        'enable-init-script')
+            sudo rm '/etc/init/varnish.override'
+        ;;
 
-    'stop')
-        [ -f "${VARNISH_PID}" ] && {
-            skill $(cat "${VARNISH_PID}")
-            rm "${VARNISH_PID}"
-        } || exit 98
-    ;;
+        'start')
+            [ -f "${VARNISH_PID}" ] && {
+                running=$(ps aux | grep "$(cat "${VARNISH_PID}")" | grep -v grep)
+                [ -n "$running" ] && exit 97
+            } || {
+                varnishd -P "${VARNISH_PID}" -f "${VARNISH_VCL}" -n "${VARNISH_LIB}" -s $VARNISH_MEM -a $VARNISH_HOST:$VARNISH_PORT -p ${VARNISH_PARAMS} >> "$SERVICE_LOG_FILE" 2>&1
+            }
+        ;;
 
-    'restart')
-        $0 stop
-        RETVAL=$?
-        if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
-            $0 start
-        else
-            exit "$RETVAL"
-        fi
-    ;;
+        'stop')
+            [ -f "${VARNISH_PID}" ] && {
+                skill $(cat "${VARNISH_PID}")
+                rm "${VARNISH_PID}"
+            } || exit 98
+        ;;
 
-    'clear-cache')
-        # TODO flush varnish cache instead of restart.
-        $0 restart
-    ;;
+        'restart')
+            $0 stop
+            RETVAL=$?
+            if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+                $0 start
+            else
+                exit "$RETVAL"
+            fi
+        ;;
 
-    'NOOP')
-        # NOOP
-    ;;
+        'clear-cache')
+            # TODO flush varnish cache instead of restart.
+            $0 restart
+        ;;
 
-    *)
-        exit 99
-    ;;
-esac
+        'NOOP')
+            # NOOP
+        ;;
+
+        *)
+            exit 99
+        ;;
+    esac
+}
+
+
+service.run_main

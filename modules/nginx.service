@@ -9,6 +9,7 @@
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
 [ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
+source "${SERVICE_ROOT_DIR}/lib/service.run_main.sh"
 source "${SERVICE_ROOT_DIR}/lib/var.default.sh"
 source "${SERVICE_ROOT_DIR}/etc/default/nginx.sh"
 
@@ -19,60 +20,66 @@ SERVICE_LOG_DIR="${LOG_DIR}/nginx"
 mkdir -p "${LIB_DIR}/nginx" "${LOG_DIR}/nginx"
 mkdir -p "${CACHE_DIR}/nginx"
 
-case "$1" in
-    'disable-init-script')
-        sudo sh -c 'echo "manual" > /etc/init/nginx.override'
-    ;;
 
-    'enable-init-script')
-        sudo rm '/etc/init/nginx.override'
-    ;;
+function main () {
+    case "$COMMAND" in
+        'disable-init-script')
+            sudo sh -c 'echo "manual" > /etc/init/nginx.override'
+        ;;
 
-    'start')
-        sudo start-stop-daemon --start --quiet --pidfile "${NGINX_PID}" --chdir "$BASE_DIR" --exec "${NGINX_DAEMON}" \
-            --test \
-            || exit 97
-        sudo start-stop-daemon --start --quiet --pidfile "${NGINX_PID}" --chdir "$BASE_DIR" --exec "${NGINX_DAEMON}" \
-            -- -p "${BASE_DIR}" -c "${NGINX_CONFIG}" -g "$NGINX_PARAMS" \
-            || exit 2
-    ;;
+        'enable-init-script')
+            sudo rm '/etc/init/nginx.override'
+        ;;
 
-    'stop')
-        sudo start-stop-daemon --stop --quiet --retry=TERM/$TIMEOUT/KILL/5 --pidfile "${NGINX_PID}" --name "nginx"
-        RETVAL="$?"
-        [ "$RETVAL" = 2 ] && exit 2
-        [ "$RETVAL" = 1 ] && exit 98
-        rm -f ${NGINX_PID}
-        exit "$RETVAL"
-    ;;
+        'start')
+            sudo start-stop-daemon --start --quiet --pidfile "${NGINX_PID}" --chdir "$BASE_DIR" --exec "${NGINX_DAEMON}" \
+                --test \
+                || exit 97
+            sudo start-stop-daemon --start --quiet --pidfile "${NGINX_PID}" --chdir "$BASE_DIR" --exec "${NGINX_DAEMON}" \
+                -- -p "${BASE_DIR}" -c "${NGINX_CONFIG}" -g "$NGINX_PARAMS" \
+                || exit 2
+        ;;
 
-    'restart')
-        $0 stop
-        RETVAL=$?
-        if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
-            $0 start
-        else
+        'stop')
+            sudo start-stop-daemon --stop --quiet --retry=TERM/$TIMEOUT/KILL/5 --pidfile "${NGINX_PID}" --name "nginx"
+            RETVAL="$?"
+            [ "$RETVAL" = 2 ] && exit 2
+            [ "$RETVAL" = 1 ] && exit 98
+            rm -f ${NGINX_PID}
             exit "$RETVAL"
-        fi
-    ;;
+        ;;
 
-    'reload')
-        sudo start-stop-daemon --stop --signal HUP --quiet --pidfile "${NGINX_PID}" --name "nginx"
-    ;;
+        'restart')
+            $0 stop
+            RETVAL=$?
+            if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+                $0 start
+            else
+                exit "$RETVAL"
+            fi
+        ;;
 
-    'test')
-        sudo "${NGINX_DAEMON}" -p "${BASE_DIR}" -c "${NGINX_CONFIG}" -g "$NGINX_PARAMS" -t
-    ;;
+        'reload')
+            sudo start-stop-daemon --stop --signal HUP --quiet --pidfile "${NGINX_PID}" --name "nginx"
+        ;;
 
-    'clear-cache')
-        rm -rf "${CACHE_DIR}/nginx/*"
-    ;;
+        'test')
+            sudo "${NGINX_DAEMON}" -p "${BASE_DIR}" -c "${NGINX_CONFIG}" -g "$NGINX_PARAMS" -t
+        ;;
 
-    'NOOP')
-        # NOOP
-    ;;
+        'clear-cache')
+            rm -rf "${CACHE_DIR}/nginx/*"
+        ;;
 
-    *)
-        exit 99
-    ;;
-esac
+        'NOOP')
+            # NOOP
+        ;;
+
+        *)
+            exit 99
+        ;;
+    esac
+}
+
+
+service.run_main

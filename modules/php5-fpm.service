@@ -9,6 +9,7 @@
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
 [ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
+source "${SERVICE_ROOT_DIR}/lib/service.run_main.sh"
 source "${SERVICE_ROOT_DIR}/lib/var.default.sh"
 source "${SERVICE_ROOT_DIR}/etc/default/php5-fpm.sh"
 
@@ -16,60 +17,66 @@ TIMEOUT=30
 
 SERVICE_LOG_FILE="${LOG_DIR}/php5-fpm.log"
 
-case "$1" in
-    'disable-init-script')
-        sudo sh -c 'echo "manual" > /etc/init/php5-fpm.override'
-    ;;
 
-    'enable-init-script')
-        sudo rm '/etc/init/php5-fpm.override'
-    ;;
+function main () {
+    case "$COMMAND" in
+        'disable-init-script')
+            sudo sh -c 'echo "manual" > /etc/init/php5-fpm.override'
+        ;;
 
-    'start')
-        start-stop-daemon --start --quiet --pidfile "${PHP5_FPM_PID}" --exec "${PHP5_FPM_DAEMON}" --test \
-            || exit 97
-        start-stop-daemon --start --quiet --pidfile "${PHP5_FPM_PID}" --exec "${PHP5_FPM_DAEMON}" -- \
-            -c "${PHP5_FPM_PHP_CONFIG}" --fpm-config "${PHP5_FPM_CONFIG}" --prefix "${BASE_DIR}" \
-            --pid "${PHP5_FPM_PID}" --daemonize \
-            || exit 2
-    ;;
+        'enable-init-script')
+            sudo rm '/etc/init/php5-fpm.override'
+        ;;
 
-    'stop')
-        start-stop-daemon --stop --quiet --retry=QUIT/$TIMEOUT/TERM/5/KILL/5 --pidfile "${PHP5_FPM_PID}" \
-            --name "php5-fpm"
-        RETVAL="$?"
-        [ "$RETVAL" = 2 ] && exit 2
-        [ "$RETVAL" = 1 ] && exit 98
-        start-stop-daemon --stop --quiet --oknodo --retry=0/30/TERM/5/KILL/5 --pidfile "${PHP5_FPM_PID}" \
-            --exec "${PHP5_FPM_DAEMON}"
-        [ "$?" = 2 ] && exit 2
-        rm -f ${PHP5_FPM_PID}
-        exit "$RETVAL"
-    ;;
+        'start')
+            start-stop-daemon --start --quiet --pidfile "${PHP5_FPM_PID}" --exec "${PHP5_FPM_DAEMON}" --test \
+                || exit 97
+            start-stop-daemon --start --quiet --pidfile "${PHP5_FPM_PID}" --exec "${PHP5_FPM_DAEMON}" -- \
+                -c "${PHP5_FPM_PHP_CONFIG}" --fpm-config "${PHP5_FPM_CONFIG}" --prefix "${BASE_DIR}" \
+                --pid "${PHP5_FPM_PID}" --daemonize \
+                || exit 2
+        ;;
 
-    'restart')
-        $0 stop
-        RETVAL=$?
-        if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
-            $0 start
-        else
+        'stop')
+            start-stop-daemon --stop --quiet --retry=QUIT/$TIMEOUT/TERM/5/KILL/5 --pidfile "${PHP5_FPM_PID}" \
+                --name "php5-fpm"
+            RETVAL="$?"
+            [ "$RETVAL" = 2 ] && exit 2
+            [ "$RETVAL" = 1 ] && exit 98
+            start-stop-daemon --stop --quiet --oknodo --retry=0/30/TERM/5/KILL/5 --pidfile "${PHP5_FPM_PID}" \
+                --exec "${PHP5_FPM_DAEMON}"
+            [ "$?" = 2 ] && exit 2
+            rm -f ${PHP5_FPM_PID}
             exit "$RETVAL"
-        fi
-    ;;
+        ;;
 
-    'reload')
-        start-stop-daemon --stop --signal USR2 --quiet --pidfile "${PHP5_FPM_PID}" --name "php5-fpm"
-    ;;
+        'restart')
+            $0 stop
+            RETVAL=$?
+            if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+                $0 start
+            else
+                exit "$RETVAL"
+            fi
+        ;;
 
-    'clear-cache')
-        $0 restart
-    ;;
+        'reload')
+            start-stop-daemon --stop --signal USR2 --quiet --pidfile "${PHP5_FPM_PID}" --name "php5-fpm"
+        ;;
 
-    'NOOP')
-        # NOOP
-    ;;
+        'clear-cache')
+            $0 restart
+        ;;
 
-    *)
-        exit 99
-    ;;
-esac
+        'NOOP')
+            # NOOP
+        ;;
+
+        *)
+            exit 99
+        ;;
+    esac
+}
+
+
+service.run_main

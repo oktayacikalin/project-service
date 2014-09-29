@@ -9,6 +9,7 @@
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
 [ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
+source "${SERVICE_ROOT_DIR}/lib/service.run_main.sh"
 source "${SERVICE_ROOT_DIR}/lib/var.default.sh"
 source "${SERVICE_ROOT_DIR}/etc/default/solr.sh"
 
@@ -22,53 +23,59 @@ SERVICE_LOG_DIR="$SOLR_LOGS"
 
 mkdir -p "${SOLR_PID}" "${SOLR_LOGS}"
 
-case "$1" in
-    'start')
-        result=$("${SOLR_INIT_SCRIPT}" start)
-        RETVAL="$?"
-        grep --quiet -i 'process already running' <<< "$result" && {
-            exit 97
-        } || {
-            [ "$RETVAL" != 0 ] && {
-                echo "$result"
+
+function main () {
+    case "$COMMAND" in
+        'start')
+            result=$("${SOLR_INIT_SCRIPT}" start)
+            RETVAL="$?"
+            grep --quiet -i 'process already running' <<< "$result" && {
+                exit 97
+            } || {
+                [ "$RETVAL" != 0 ] && {
+                    echo "$result"
+                }
+                exit "$RETVAL"
             }
-            exit "$RETVAL"
-        }
-    ;;
+        ;;
 
-    'stop')
-        result=$("${SOLR_INIT_SCRIPT}" stop)
-        RETVAL="$?"
-        grep --quiet -i 'no process in pidfile' <<< "$result" && {
-            exit 98
-        } || {
-            [ "$RETVAL" != 0 ] && {
-                echo "$result"
+        'stop')
+            result=$("${SOLR_INIT_SCRIPT}" stop)
+            RETVAL="$?"
+            grep --quiet -i 'no process in pidfile' <<< "$result" && {
+                exit 98
+            } || {
+                [ "$RETVAL" != 0 ] && {
+                    echo "$result"
+                }
+                exit "$RETVAL"
             }
-            exit "$RETVAL"
-        }
-    ;;
+        ;;
 
-    'restart')
-        $0 stop
-        RETVAL=$?
-        if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
-            $0 start
-        else
-            exit "$RETVAL"
-        fi
-    ;;
+        'restart')
+            $0 stop
+            RETVAL=$?
+            if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+                $0 start
+            else
+                exit "$RETVAL"
+            fi
+        ;;
 
-    'clear-cache')
-        # TODO flush solr cache instead of restart.
-        $0 restart
-    ;;
+        'clear-cache')
+            # TODO flush solr cache instead of restart.
+            $0 restart
+        ;;
 
-    'NOOP')
-        # NOOP
-    ;;
+        'NOOP')
+            # NOOP
+        ;;
 
-    *)
-        exit 99
-    ;;
-esac
+        *)
+            exit 99
+        ;;
+    esac
+}
+
+
+service.run_main

@@ -13,3 +13,5 @@ LOG_DIR="${BASE_DIR}/var/log"
 PID_DIR="${BASE_DIR}/var/run"
 CACHE_DIR="${BASE_DIR}/var/cache"
 BACKUP_DIR="${BASE_DIR}/var/backups"
+
+COMMAND="$1"

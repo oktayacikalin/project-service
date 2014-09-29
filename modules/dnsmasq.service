@@ -9,6 +9,7 @@
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
 [ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
+source "${SERVICE_ROOT_DIR}/lib/service.run_main.sh"
 source "${SERVICE_ROOT_DIR}/lib/var.default.sh"
 source "${SERVICE_ROOT_DIR}/etc/default/dnsmasq.sh"
 
@@ -22,70 +23,76 @@ cat > ${DNSMASQ_CONF} <<EOT
 addn-hosts=$DNSMASQ_HOSTS
 EOT
 
-case "$1" in
-    'install')
-        [ ! -e "$DNSMASQ_CONF_FILE" ] && {
-            sudo ln -sv "$DNSMASQ_CONF" "$DNSMASQ_CONF_FILE"
-            sudo service dnsmasq force-reload
-        } || {
-            exit 97  # NOOP
-        }
-    ;;
 
-    'uninstall')
-        [ -e "$DNSMASQ_CONF_FILE" ] && {
-            sudo rm -v "$DNSMASQ_CONF_FILE"
-            sudo service dnsmasq force-reload
-        } || {
+function main () {
+    case "$COMMAND" in
+        'install')
+            [ ! -e "$DNSMASQ_CONF_FILE" ] && {
+                sudo ln -sv "$DNSMASQ_CONF" "$DNSMASQ_CONF_FILE"
+                sudo service dnsmasq force-reload
+            } || {
+                exit 97  # NOOP
+            }
+        ;;
+
+        'uninstall')
+            [ -e "$DNSMASQ_CONF_FILE" ] && {
+                sudo rm -v "$DNSMASQ_CONF_FILE"
+                sudo service dnsmasq force-reload
+            } || {
+                exit 98  # NOOP
+            }
+        ;;
+
+        'reinstall')
+            $0 uninstall
+            RETVAL=$?
+            if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+                $0 install
+            else
+                exit "$RETVAL"
+            fi
+        ;;
+
+        'start')
+            [ -e "$DNSMASQ_CONF_FILE" ] && {
+                exit 97  # NOOP
+            } || {
+                $0 install
+            }
+        ;;
+
+        'stop')
             exit 98  # NOOP
-        }
-    ;;
+        ;;
 
-    'reinstall')
-        $0 uninstall
-        RETVAL=$?
-        if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
-            $0 install
-        else
-            exit "$RETVAL"
-        fi
-    ;;
+        'restart')
+            $0 stop
+            RETVAL=$?
+            if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+                $0 start
+            else
+                exit "$RETVAL"
+            fi
+        ;;
 
-    'start')
-        [ -e "$DNSMASQ_CONF_FILE" ] && {
-            exit 97  # NOOP
-        } || {
-            $0 install
-        }
-    ;;
+        'reload')
+            [ -e "$DNSMASQ_CONF_FILE" ] && {
+                sudo service dnsmasq force-reload
+            } || {
+                $0 install
+            }
+        ;;
 
-    'stop')
-        exit 98  # NOOP
-    ;;
+        'NOOP')
+            # NOOP
+        ;;
 
-    'restart')
-        $0 stop
-        RETVAL=$?
-        if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
-            $0 start
-        else
-            exit "$RETVAL"
-        fi
-    ;;
+        *)
+            exit 99
+        ;;
+    esac
+}
 
-    'reload')
-        [ -e "$DNSMASQ_CONF_FILE" ] && {
-            sudo service dnsmasq force-reload
-        } || {
-            $0 install
-        }
-    ;;
 
-    'NOOP')
-        # NOOP
-    ;;
-
-    *)
-        exit 99
-    ;;
-esac
+service.run_main

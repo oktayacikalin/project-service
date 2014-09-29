@@ -9,104 +9,110 @@
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
 [ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
+source "${SERVICE_ROOT_DIR}/lib/service.run_main.sh"
 source "${SERVICE_ROOT_DIR}/lib/var.default.sh"
 source "${SERVICE_ROOT_DIR}/etc/default/magento.sh"
 
 SERVICE_LOG_DIR="${MAGENTO_HOME}/var/log"
 
-case "$1" in
-    'clear-cache')
-        pushd "${MAGENTO_HOME}" > /dev/null
-        magerun -q cache:flush
-        popd > /dev/null
-    ;;
+function main () {
+    case "$COMMAND" in
+        'clear-cache')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            magerun -q cache:flush
+            popd > /dev/null
+        ;;
 
-    'clear-block-cache')
-        pushd "${MAGENTO_HOME}" > /dev/null
-        magerun -q cache:clean block_html,translate,layout,full_page
-        popd > /dev/null
-    ;;
+        'clear-block-cache')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            magerun -q cache:clean block_html,translate,layout,full_page
+            popd > /dev/null
+        ;;
 
-    'disable-auto-migrations')
-        pushd "${MAGENTO_HOME}" > /dev/null
-        # TODO Write file into overlay folder which PHP will include on top.
-        for command in ${MAGE_COMMANDS[@]}; do
-            sed -e "s!^\(\s*\)${command}!\1// ${command}!g" -i $MAGE_FILE
-        done
-        popd > /dev/null
-    ;;
+        'disable-auto-migrations')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            # TODO Write file into overlay folder which PHP will include on top.
+            for command in ${MAGE_COMMANDS[@]}; do
+                sed -e "s!^\(\s*\)${command}!\1// ${command}!g" -i $MAGE_FILE
+            done
+            popd > /dev/null
+        ;;
 
-    'enable-auto-migrations')
-        pushd "${MAGENTO_HOME}" > /dev/null
-        # TODO Write file into overlay folder which PHP will include on top.
-        for command in ${MAGE_COMMANDS[@]}; do
-            sed -e "s!^\(\s*\)// ${command}!\1${command}!g" -i $MAGE_FILE
-        done
-        popd > /dev/null
-    ;;
+        'enable-auto-migrations')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            # TODO Write file into overlay folder which PHP will include on top.
+            for command in ${MAGE_COMMANDS[@]}; do
+                sed -e "s!^\(\s*\)// ${command}!\1${command}!g" -i $MAGE_FILE
+            done
+            popd > /dev/null
+        ;;
 
-    'migrate')
-        pushd "${MAGENTO_HOME}" > /dev/null
-        php $MAGENTO_SHELL_MIGRATE
-        popd > /dev/null
-    ;;
+        'migrate')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            php $MAGENTO_SHELL_MIGRATE
+            popd > /dev/null
+        ;;
 
-    'reindex')
-        pushd "${MAGENTO_HOME}" > /dev/null
-        php $MAGENTO_SHELL_INDEXER reindexall
-        popd > /dev/null
-    ;;
+        'reindex')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            php $MAGENTO_SHELL_INDEXER reindexall
+            popd > /dev/null
+        ;;
 
-    'reindex-search')
-        pushd "${MAGENTO_HOME}" > /dev/null
-        php $MAGENTO_SHELL_INDEXER --reindex catalogsearch_fulltext
-        popd > /dev/null
-    ;;
+        'reindex-search')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            php $MAGENTO_SHELL_INDEXER --reindex catalogsearch_fulltext
+            popd > /dev/null
+        ;;
 
-    'run-cronjobs')
-        pushd "${MAGENTO_HOME}" > /dev/null
-        php $MAGENTO_CRON_PHP
-        popd > /dev/null
-    ;;
+        'run-cronjobs')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            php $MAGENTO_CRON_PHP
+            popd > /dev/null
+        ;;
 
-    'magerun')
-        pushd "${MAGENTO_HOME}" > /dev/null
-        echo  # Put the prompt into a new line.
-        if [[ ${#@} = 1 ]]; then
-            magerun shell
-        else
-            magerun ${@:2}
-        fi
-        popd > /dev/null
-    ;;
+        'magerun')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            echo  # Put the prompt into a new line.
+            if [[ ${#@} = 1 ]]; then
+                magerun shell
+            else
+                magerun ${@:2}
+            fi
+            popd > /dev/null
+        ;;
 
-    'export-inline-translations')
-        pushd "${MAGENTO_HOME}" > /dev/null
-        php $MAGENTO_SHELL_EXPORT_TRANSLATIONS
-        popd > /dev/null
-    ;;
+        'export-inline-translations')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            php $MAGENTO_SHELL_EXPORT_TRANSLATIONS
+            popd > /dev/null
+        ;;
 
-    'toggle-template-hints')
-        pushd "${MAGENTO_HOME}" > /dev/null
-        echo  # Put the prompt into a new line.
-        magerun dev:template-hints
-        magerun dev:template-hints-blocks
-        magerun cache:clean block_html,full_page
-        popd > /dev/null
-    ;;
+        'toggle-template-hints')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            echo  # Put the prompt into a new line.
+            magerun dev:template-hints
+            magerun dev:template-hints-blocks
+            magerun cache:clean block_html,full_page
+            popd > /dev/null
+        ;;
 
-    'toggle-logs')
-        pushd "${MAGENTO_HOME}" > /dev/null
-        echo  # Put the prompt into a new line.
-        magerun dev:log
-        popd > /dev/null
-    ;;
+        'toggle-logs')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            echo  # Put the prompt into a new line.
+            magerun dev:log
+            popd > /dev/null
+        ;;
 
-    'NOOP')
-        # NOOP
-    ;;
+        'NOOP')
+            # NOOP
+        ;;
 
-    *)
-        exit 99
-    ;;
-esac
+        *)
+            exit 99
+        ;;
+    esac
+}
+
+
+service.run_main

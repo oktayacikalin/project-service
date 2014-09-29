@@ -9,6 +9,7 @@
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
 [ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
+source "${SERVICE_ROOT_DIR}/lib/service.run_main.sh"
 source "${SERVICE_ROOT_DIR}/lib/var.default.sh"
 source "${SERVICE_ROOT_DIR}/lib/proc.wait_for_pid_in_file.sh"
 source "${SERVICE_ROOT_DIR}/etc/default/mysql.sh"
@@ -105,189 +106,195 @@ function mysql.list_tables_like () {
     fi
 }
 
-case "$1" in
-    'disable-init-script')
-        sudo sh -c 'echo "manual" > /etc/init/mysql.override'
-    ;;
 
-    'enable-init-script')
-        sudo rm '/etc/init/mysql.override'
-    ;;
+function main () {
+    case "$COMMAND" in
+        'disable-init-script')
+            sudo sh -c 'echo "manual" > /etc/init/mysql.override'
+        ;;
 
-    'bootstrap')
-        mysql_install_db --defaults-file="${MYSQL_CONF}"
-        $0 start
-        proc.wait_for_pid_in_file "${MYSQL_PID}"
-        mysqladmin --defaults-file="${MYSQL_CONF}" -u "${MYSQL_USER}" password "${MYSQL_PASS}"
-        # mysqladmin --defaults-file="${MYSQL_CONF}" -h localhost -u "${MYSQL_USER}" password "${MYSQL_PASS}"
-    ;;
+        'enable-init-script')
+            sudo rm '/etc/init/mysql.override'
+        ;;
 
-    'reconfigure')
-        fill "$(cat ${ETC_DIR}/mysql/mysql.conf)" > ${MYSQL_CONF}
-        fill "$(cat ${ETC_DIR}/mysql/mysql-admin.conf)" > ${MYSQL_ADMIN_CONF}
-    ;;
-
-    'start')
-        start-stop-daemon --start --quiet --pidfile "$MYSQL_PID" --chdir "$BASE_DIR" --background --exec /usr/sbin/mysqld \
-            --test \
-            || exit 97
-        start-stop-daemon --start --pidfile "$MYSQL_PID" --chdir "$BASE_DIR" --background --exec /usr/sbin/mysqld \
-            -- --defaults-file="${MYSQL_CONF}"
-    ;;
-
-    'stop')
-        start-stop-daemon --stop --pidfile "$MYSQL_PID" --retry 30
-        RETVAL="$?"
-        [ "$RETVAL" = 2 ] && exit 2
-        [ "$RETVAL" = 1 ] && exit 98
-        rm -f ${MYSQL_PID}
-        exit "$RETVAL"
-    ;;
-
-    'restart')
-        $0 stop
-        RETVAL=$?
-        if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+        'bootstrap')
+            mysql_install_db --defaults-file="${MYSQL_CONF}"
             $0 start
-        else
+            proc.wait_for_pid_in_file "${MYSQL_PID}"
+            mysqladmin --defaults-file="${MYSQL_CONF}" -u "${MYSQL_USER}" password "${MYSQL_PASS}"
+            # mysqladmin --defaults-file="${MYSQL_CONF}" -h localhost -u "${MYSQL_USER}" password "${MYSQL_PASS}"
+        ;;
+
+        'reconfigure')
+            fill "$(cat ${ETC_DIR}/mysql/mysql.conf)" > ${MYSQL_CONF}
+            fill "$(cat ${ETC_DIR}/mysql/mysql-admin.conf)" > ${MYSQL_ADMIN_CONF}
+        ;;
+
+        'start')
+            start-stop-daemon --start --quiet --pidfile "$MYSQL_PID" --chdir "$BASE_DIR" --background --exec /usr/sbin/mysqld \
+                --test \
+                || exit 97
+            start-stop-daemon --start --pidfile "$MYSQL_PID" --chdir "$BASE_DIR" --background --exec /usr/sbin/mysqld \
+                -- --defaults-file="${MYSQL_CONF}"
+        ;;
+
+        'stop')
+            start-stop-daemon --stop --pidfile "$MYSQL_PID" --retry 30
+            RETVAL="$?"
+            [ "$RETVAL" = 2 ] && exit 2
+            [ "$RETVAL" = 1 ] && exit 98
+            rm -f ${MYSQL_PID}
             exit "$RETVAL"
-        fi
-    ;;
+        ;;
 
-    'mysql-shell')
-        echo  # Put the prompt into a new line.
-        mysql ${MYSQL_CONNECTION_PARAMS} ${@:2}
-    ;;
-
-    'mytop')
-        mytop --socket="${MYSQL_SOCKET}"
-    ;;
-
-    'mysqltuner')
-        mysqltuner --forcemem 8192 --forceswap 8192 --socket="${MYSQL_SOCKET}"
-    ;;
-
-    'set-innodb-table-row-format-compact')
-        echo -n '.'
-        ensure_innodb_barracuda_config
-        echo -n '.'
-        ensure_innodb_barracuda_online
-        echo -n '.'
-        set_innodb_table_row_format COMPACT
-
-        echo -n ' '
-    ;;
-
-    'set-innodb-table-row-format-compressed')
-        echo -n '.'
-        ensure_innodb_barracuda_config
-        echo -n '.'
-        ensure_innodb_barracuda_online
-        echo -n '.'
-        set_innodb_table_row_format COMPRESSED
-
-        echo -n ' '
-    ;;
-
-    # NOTE: AFAIK only supported by Fusion-io.
-    # 'enable-innodb-table-page-compression')
-    #     echo -n '.'
-    #     ensure_innodb_barracuda_config
-    #     echo -n '.'
-    #     ensure_innodb_barracuda_online
-    #     echo -n '.'
-    #     enable_innodb_table_page_compression
-
-    #     echo -n ' '
-    # ;;
-
-    # NOTE: AFAIK only supported by Fusion-io.
-    # 'disable-innodb-table-page-compression')
-    #     echo -n '.'
-    #     ensure_innodb_barracuda_config
-    #     echo -n '.'
-    #     ensure_innodb_barracuda_online
-    #     echo -n '.'
-    #     disable_innodb_table_page_compression
-
-    #     echo -n ' '
-    # ;;
-
-    'backup')
-        requested_database="$2"
-        requested_tables=("${@:3}")
-        databases=($(echo "show databases;" | mysql ${MYSQL_CONNECTION_PARAMS} -B -N | grep -v -E '^(information_schema|mysql|performance_schema)$'))
-        for database in "${databases[@]}"; do
-            if [ -n "${requested_database}" ] && [ "${database}" != "${requested_database}" ]; then
-                continue
+        'restart')
+            $0 stop
+            RETVAL=$?
+            if [ $RETVAL = 0 ] || [ $RETVAL = 98 ]; then
+                $0 start
+            else
+                exit "$RETVAL"
             fi
-            echo -n "${database}... "
-            backup_dir="${MYSQL_BACKUP_DIR}/${database}"
-            if [ -z "${requested_tables}" ]; then
-                rm -rf "${backup_dir}"
-            fi
-            mkdir -p "${backup_dir}"
-            tables=()
-            if [ -n "${requested_tables}" ]; then
-                for pattern in "${requested_tables[@]}"; do
-                    tables+=$(mysql.list_tables_like "${database}" "${pattern}")
-                done
-                if [ -z "${tables[@]}" ]; then
-                    echo "WARNING: None of the requested tables could be found. Avoiding complete dump!"
+        ;;
+
+        'mysql-shell')
+            echo  # Put the prompt into a new line.
+            mysql ${MYSQL_CONNECTION_PARAMS} ${@:2}
+        ;;
+
+        'mytop')
+            mytop --socket="${MYSQL_SOCKET}"
+        ;;
+
+        'mysqltuner')
+            mysqltuner --forcemem 8192 --forceswap 8192 --socket="${MYSQL_SOCKET}"
+        ;;
+
+        'set-innodb-table-row-format-compact')
+            echo -n '.'
+            ensure_innodb_barracuda_config
+            echo -n '.'
+            ensure_innodb_barracuda_online
+            echo -n '.'
+            set_innodb_table_row_format COMPACT
+
+            echo -n ' '
+        ;;
+
+        'set-innodb-table-row-format-compressed')
+            echo -n '.'
+            ensure_innodb_barracuda_config
+            echo -n '.'
+            ensure_innodb_barracuda_online
+            echo -n '.'
+            set_innodb_table_row_format COMPRESSED
+
+            echo -n ' '
+        ;;
+
+        # NOTE: AFAIK only supported by Fusion-io.
+        # 'enable-innodb-table-page-compression')
+        #     echo -n '.'
+        #     ensure_innodb_barracuda_config
+        #     echo -n '.'
+        #     ensure_innodb_barracuda_online
+        #     echo -n '.'
+        #     enable_innodb_table_page_compression
+
+        #     echo -n ' '
+        # ;;
+
+        # NOTE: AFAIK only supported by Fusion-io.
+        # 'disable-innodb-table-page-compression')
+        #     echo -n '.'
+        #     ensure_innodb_barracuda_config
+        #     echo -n '.'
+        #     ensure_innodb_barracuda_online
+        #     echo -n '.'
+        #     disable_innodb_table_page_compression
+
+        #     echo -n ' '
+        # ;;
+
+        'backup')
+            requested_database="$2"
+            requested_tables=("${@:3}")
+            databases=($(echo "show databases;" | mysql ${MYSQL_CONNECTION_PARAMS} -B -N | grep -v -E '^(information_schema|mysql|performance_schema)$'))
+            for database in "${databases[@]}"; do
+                if [ -n "${requested_database}" ] && [ "${database}" != "${requested_database}" ]; then
                     continue
                 fi
-            fi
-            mysqldump ${MYSQL_CONNECTION_PARAMS} -T "${backup_dir}" "${database}" ${tables[@]}
-        done
-    ;;
+                echo -n "${database}... "
+                backup_dir="${MYSQL_BACKUP_DIR}/${database}"
+                if [ -z "${requested_tables}" ]; then
+                    rm -rf "${backup_dir}"
+                fi
+                mkdir -p "${backup_dir}"
+                tables=()
+                if [ -n "${requested_tables}" ]; then
+                    for pattern in "${requested_tables[@]}"; do
+                        tables+=$(mysql.list_tables_like "${database}" "${pattern}")
+                    done
+                    if [ -z "${tables[@]}" ]; then
+                        echo "WARNING: None of the requested tables could be found. Avoiding complete dump!"
+                        continue
+                    fi
+                fi
+                mysqldump ${MYSQL_CONNECTION_PARAMS} -T "${backup_dir}" "${database}" ${tables[@]}
+            done
+        ;;
 
-    'restore')
-        # https://mariadb.com/kb/en/mariadb/documentation/optimization-and-tuning/query-optimizations/how-to-quickly-insert-data-into-mariadb/
-        requested_database="$2"
-        # requested_tables=("${@:3}")
-        prepare_sql_file="${SERVICE_ROOT_DIR}/scripts/mysql-import-optimizations.sql"
-        databases=($(ls "${MYSQL_BACKUP_DIR}"))
-        for database in "${databases[@]}"; do
-            if [ -n "${requested_database}" ] && [ "${database}" != "${requested_database}" ]; then
-                continue
-            fi
-            echo  # Put the prompt into a new line.
-            echo "Restoring database ${database}... "
-            backup_dir="${MYSQL_BACKUP_DIR}/${database}"
-            sql_files=($(ls -rt "${backup_dir}"/*.sql))
-            data_files=($(ls -rt "${backup_dir}"/*.txt))
-            # TODO should only not recreate when giving a table pattern...
-            if [ -z "${requested_database}" ]; then
-                mysqladmin ${MYSQL_CONNECTION_PARAMS} -f drop "${database}" > /dev/null
-                mysqladmin ${MYSQL_CONNECTION_PARAMS} create "${database}"
-            fi
-            echo -n "Creating tables... "
-            {
-                cat "${prepare_sql_file}"
-                for file in "${sql_files[@]}"; do
-                    cat "${file}"
-                    echo -n "." >&2
-                done
-            } | mysql ${MYSQL_CONNECTION_PARAMS} "${database}"
-            echo  # Put the prompt into a new line.
-            echo "Importing data... "
-            for file in "${data_files[@]}"; do
-                table_name=$(basename "${file}")
-                table_name=${table_name%%.*}
+        'restore')
+            # https://mariadb.com/kb/en/mariadb/documentation/optimization-and-tuning/query-optimizations/how-to-quickly-insert-data-into-mariadb/
+            requested_database="$2"
+            # requested_tables=("${@:3}")
+            prepare_sql_file="${SERVICE_ROOT_DIR}/scripts/mysql-import-optimizations.sql"
+            databases=($(ls "${MYSQL_BACKUP_DIR}"))
+            for database in "${databases[@]}"; do
+                if [ -n "${requested_database}" ] && [ "${database}" != "${requested_database}" ]; then
+                    continue
+                fi
+                echo  # Put the prompt into a new line.
+                echo "Restoring database ${database}... "
+                backup_dir="${MYSQL_BACKUP_DIR}/${database}"
+                sql_files=($(ls -rt "${backup_dir}"/*.sql))
+                data_files=($(ls -rt "${backup_dir}"/*.txt))
+                # TODO should only not recreate when giving a table pattern...
+                if [ -z "${requested_database}" ]; then
+                    mysqladmin ${MYSQL_CONNECTION_PARAMS} -f drop "${database}" > /dev/null
+                    mysqladmin ${MYSQL_CONNECTION_PARAMS} create "${database}"
+                fi
+                echo -n "Creating tables... "
                 {
                     cat "${prepare_sql_file}"
-                    echo "LOAD DATA INFILE '${file}' INTO TABLE ${table_name} CHARACTER SET UTF8;"
+                    for file in "${sql_files[@]}"; do
+                        cat "${file}"
+                        echo -n "." >&2
+                    done
                 } | mysql ${MYSQL_CONNECTION_PARAMS} "${database}"
-                echo
-            done | pv -l -s ${#data_files[@]} > /dev/null
-        done
-    ;;
+                echo  # Put the prompt into a new line.
+                echo "Importing data... "
+                for file in "${data_files[@]}"; do
+                    table_name=$(basename "${file}")
+                    table_name=${table_name%%.*}
+                    {
+                        cat "${prepare_sql_file}"
+                        echo "LOAD DATA INFILE '${file}' INTO TABLE ${table_name} CHARACTER SET UTF8;"
+                    } | mysql ${MYSQL_CONNECTION_PARAMS} "${database}"
+                    echo
+                done | pv -l -s ${#data_files[@]} > /dev/null
+            done
+        ;;
 
-    'NOOP')
-        # NOOP
-    ;;
+        'NOOP')
+            # NOOP
+        ;;
 
-    *)
-        exit 99
-    ;;
-esac
+        *)
+            exit 99
+        ;;
+    esac
+}
+
+
+service.run_main

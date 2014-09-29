@@ -9,15 +9,23 @@
 [ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
 [ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
+source "${SERVICE_ROOT_DIR}/lib/service.run_main.sh"
+
 SERVICE_LOG_FILE="/var/log/syslog"
 SERVICE_IS_ACTIVE=0
 
-case "$1" in
-    'NOOP')
-        # NOOP
-    ;;
 
-    *)
-        exit 99
-    ;;
-esac
+function main () {
+    case "$COMMAND" in
+        'NOOP')
+            # NOOP
+        ;;
+
+        *)
+            exit 99
+        ;;
+    esac
+}
+
+
+service.run_main
