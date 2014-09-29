@@ -10,6 +10,7 @@
 [ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
 
 source "${SERVICE_ROOT_DIR}/lib/var.default.sh"
+source "${SERVICE_ROOT_DIR}/lib/proc.wait_for_pid_in_file.sh"
 source "${SERVICE_ROOT_DIR}/etc/default/mysql.sh"
 
 SERVICE_LOG_FILE="$MYSQL_ERROR_LOG"
@@ -35,17 +36,6 @@ function fill () {
 
 [ -e "${MYSQL_CONF}" ] || fill "$(cat ${BASE_DIR}/etc/mysql/mysql.conf)" > ${MYSQL_CONF}
 [ -e "${MYSQL_ADMIN_CONF}" ] || fill "$(cat ${BASE_DIR}/etc/mysql/mysql-admin.conf)" > ${MYSQL_ADMIN_CONF}
-
-function wait () {
-    while true; do
-        [ -f "$MYSQL_PID" ] && {
-            local pid=$(cat ${MYSQL_PID})
-            local proc=$(ps xaww | grep -v grep | grep mysqld | grep ${pid})
-            [ "$proc" ] && break
-        }
-        sleep 1
-    done
-}
 
 function ensure_innodb_barracuda_config () {
     [ -e "${BASE_DIR}/etc/mysql/conf.d/innodb_barracuda_format.cnf" ] || {
@@ -151,7 +141,7 @@ case "$1" in
     'bootstrap')
         mysql_install_db --defaults-file="${MYSQL_CONF}"
         $0 start
-        wait
+        proc.wait_for_pid_in_file "${MYSQL_PID}"
         mysqladmin --defaults-file="${MYSQL_CONF}" -u "${MYSQL_USER}" password "${MYSQL_PASS}"
         # mysqladmin --defaults-file="${MYSQL_CONF}" -h localhost -u "${MYSQL_USER}" password "${MYSQL_PASS}"
     ;;
