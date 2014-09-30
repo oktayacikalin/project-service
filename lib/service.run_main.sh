@@ -11,6 +11,6 @@ function service.run_main () (
     # echo ${BASH_SOURCE[1]}
     # echo "------------------------"
     if [ "${BASH_SOURCE[1]}" = "$0" ]; then
-        main
+        main "$@"
     fi
 )

@@ -27,4 +27,4 @@ function main () {
 }
 
 
-service.run_main
+service.run_main "$@"
