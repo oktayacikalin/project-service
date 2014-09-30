@@ -54,7 +54,6 @@ def write_data_to_disk(file, section_type, section_name, data, excludes):
         print('Writing file: %s' % filename)
         file = gzip.open(filename, 'w')
 
-    data = bytes(data, 'UTF-8')
     file.write(data)
     return file
 
@@ -71,22 +70,22 @@ def main(source_file, excludes):
     cur_file = None
 
     if source_file.endswith('.sql.gz'):
-        file = gzip.open(source_file, 'r')
+        file = gzip.open(source_file, 'rb')
     elif source_file.endswith('.sql.bz2'):
-        file = bz2.open(source_file, 'r')
+        file = bz2.open(source_file, 'rb')
     elif source_file.endswith('.sql'):
-        file = open(source_file, 'r')
+        file = open(source_file, 'rb')
     else:
         raise Exception('Unknown file type. Filename can have the following endings: .sql, .sql.gz, .sql.bz2')
 
     buffer = ''
     last_lines = dict()
     footer = []
-    for line in file:
-        line = str(line, 'UTF-8')
+    for data in file:
+        line = str(data, 'UTF-8', 'replace')
 
         if footer:
-            footer.append(line)
+            footer.append(data)
             continue
 
         try:
@@ -97,13 +96,13 @@ def main(source_file, excludes):
             last_lines[1] = line
 
         if last_lines[0] == 'UNLOCK TABLES;\n' and line.startswith('/*!'):
-            footer.append(line)
+            footer.append(data)
             continue
 
         if not line.startswith('--') and not line.strip() == '' and \
                 cur_section_type:
             cur_file = write_data_to_disk(
-                cur_file, cur_section_type, cur_section_name, line, excludes)
+                cur_file, cur_section_type, cur_section_name, data, excludes)
             buffer = ''
         buffer += line
         match = regex_indicator.search(buffer)
@@ -133,9 +132,9 @@ def main(source_file, excludes):
 
     cur_section_type = SECTION_TYPE_FOOTER
     cur_section_name = 'footer'
-    for line in footer:
+    for data in footer:
         cur_file = write_data_to_disk(
-            cur_file, cur_section_type, cur_section_name, line, excludes)
+            cur_file, cur_section_type, cur_section_name, data, excludes)
 
 
 if __name__ == '__main__':
