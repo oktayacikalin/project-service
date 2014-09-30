@@ -12,8 +12,8 @@ function service.get_commands () {
     local dquote='"'
     local commands=()
     local includes
-    readarray -t includes <<< $(grep -oE '^\s*source .*.service.*$' $service)
-    if [ "${includes[@]}" ] ; then
+    readarray -t includes <<< "$(grep -oE '^\s*source .*.service.*$' $service)"
+    if [[ "${#includes[@]}" > 0 ]] ; then
         for base in "${includes[@]}"; do
             base=($base)
             local base=$(tr -d '"' <<< ${base[1]} | tr -d "'")
