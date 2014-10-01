@@ -144,7 +144,7 @@ function handle_command () {
 
 mkdir -p "${VAR_DIR}" "${LOG_DIR}" "${PID_DIR}"
 
-if array.contains "--"  "$@"; then
+if array.contains "--" "$@"; then
     index=$(array.index "--" "$@")
     actions=("${@:1:$index}")
     params=("${@:$(expr $index + 2)}")
