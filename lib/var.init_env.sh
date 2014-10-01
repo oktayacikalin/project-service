@@ -15,5 +15,8 @@ if [ -z "${IMPORT_PATH}" ]; then
     CACHE_DIR="${BASE_DIR}/var/cache"
     BACKUP_DIR="${BASE_DIR}/var/backups"
 
+    IMPORT_PATH=("${BASE_DIR}" "${SERVICE_ROOT_DIR}")
+    source "${SERVICE_ROOT_DIR}/lib/import.sh"
+
     COMMAND="$1"
 fi
