@@ -11,8 +11,10 @@ function service.get_commands () {
     local squote="'"
     local dquote='"'
     local commands=()
-    local includes
-    readarray -t includes <<< "$(grep -oE '^\s*source .*.service.*$' $service)"
+    local old_ifs="$IFS"
+    local IFS=
+    local includes=( $(grep -oE '^\s*source .*.service.*$' $service) )
+    IFS="$old_ifs"
     if [[ "${#includes[@]}" > 0 ]] ; then
         for base in "${includes[@]}"; do
             base=($base)
