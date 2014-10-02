@@ -1,4 +1,4 @@
-var.default SOLR_INIT_SCRIPT "${BASE_DIR}/bin/jetty"
+var.default SOLR_INIT_SCRIPT "${SERVICE_ROOT_DIR}/scripts/jetty-no-daemon"
 var.default SOLR_HOME "${BASE_DIR}/solr"
 var.default SOLR_HOST "${BASE_DOMAIN}"
 var.default SOLR_PORT "9002"
