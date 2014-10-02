@@ -1,4 +1,4 @@
-var.default MAGENTO_HOME "${BASE_DIR}/shop"
+var.default MAGENTO_HOME "${BASE_DIR}/magento"
 var.default MAGENTO_CRON_PHP "cron.php"
 var.default MAGENTO_SHELL_INDEXER "shell/indexer.php"
 var.default MAGENTO_SHELL_MIGRATE "${SERVICE_ROOT_DIR}/scripts/magento-migrate.php"
