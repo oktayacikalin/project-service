@@ -113,7 +113,17 @@ function handle_command () {
                 commands=($(echo "$commands" | sed 's!NOOP!!g'))
                 if [ "$commands" ]; then
                     name=${service##*/}
-                    echo "${name%.*}: ${commands[@]}"
+                    echo -en "\e[33m${name%.*}\e[2m:\e[22m\e[39m "
+                    for command in "${commands[@]}"; do
+                        if [[ "${command}" =~ "start" ]] || [[ "${command}" =~ "restart" ]] || [[ "${command}" =~ "reload" ]] || [[ "${command}" =~ "stop" ]]; then
+                            echo -ne "\e[32m"
+                        elif [[ "${command}" =~ "init-script" ]]; then
+                            echo -ne "\e[34m"
+                        elif [[ "${command}" =~ "install" ]]; then
+                            echo -ne "\e[31m"
+                        fi
+                        echo -ne "${command}\e[39m "
+                    done
                     echo
                 fi
             done
@@ -124,16 +134,16 @@ function handle_command () {
                 local commands=$(service.get_commands $service)
                 if array.contains "$command" "${commands[@]}"; then
                     local name=${service##*/}
-                    echo -n "Executing $command on ${name%.*}: "
+                    echo -ne "Executing $command on \e[33m${name%.*}\e[39m: "
                     if "$service" "$command" "${params[@]}"; then
-                        echo "OK"
+                        echo -e "\e[32mOK\e[39m"
                     else
                         local err=$?
                         case "$err" in
-                            97) echo "OK / NOOP";;  # already started
-                            98) echo "OK / NOOP";;  # already stopped
-                            99) echo "N/A";;
-                            *) echo "FAILED";;
+                            97) echo -e "\e[2mOK / NOOP\e[22m";;  # already started
+                            98) echo -e "\e[2mOK / NOOP\e[22m";;  # already stopped
+                            99) echo -e "\e[2mN/A\e[22m";;
+                            *) echo -e "\e[31mFAILED\e[39m";;
                         esac
                     fi
                 fi
