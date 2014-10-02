@@ -7,7 +7,7 @@
 source "${SERVICE_ROOT_DIR}/lib/function.copy.sh"
 source "${SERVICE_ROOT_DIR}/lib/array.contains.sh"
 
-__IMPORTED=()
+__IMPORTED=("lib/function.copy" "lib/array.contains" "lib/import")
 
 
 function import () {
@@ -18,10 +18,6 @@ function import () {
     for import_path in "${IMPORT_PATH[@]}"; do
         filename="${import_path}/${what}.sh"
         if [ -f "${filename}" ]; then
-            if [ "${what##*/}" = "import" ]; then
-                echo "ERROR: Cannot import import lib."
-                exit 1
-            fi
             if ! array.contains "${what}" "${__IMPORTED[@]}"; then
                 source "${filename}"
                 __IMPORTED+=("${what}")
