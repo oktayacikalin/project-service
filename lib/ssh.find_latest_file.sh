@@ -2,7 +2,7 @@
 #
 # @link http://mywiki.wooledge.org/BashFAQ/003
 
-source "${SERVICE_ROOT_DIR}/lib/ssh.remote_cmd.sh"
+import "lib/ssh.remote_cmd"
 
 function ssh.find_latest_file () {
     local user=$1

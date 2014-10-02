@@ -6,9 +6,8 @@
 # @copyright Oktay Acikalin
 # @license   MIT (LICENSE.txt)
 
-source "${SERVICE_ROOT_DIR}/lib/function.rename.sh"
-source "${SERVICE_ROOT_DIR}/lib/function.prepend.sh"
-source "${SERVICE_ROOT_DIR}/lib/function.copy.sh"
+import "lib/function.rename"
+import "lib/function.prepend"
 
 
 function function.extends () {
@@ -18,6 +17,3 @@ function function.extends () {
     function.rename . "${name}"
     function.prepend "${name}" "function.rename __${name} parent"
 }
-
-# Syntax shugar.
-function.copy function.extends extends

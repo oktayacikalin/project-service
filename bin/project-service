@@ -9,13 +9,13 @@
 export SERVICE_DIR="$(readlink -f $(dirname $0)/../service)"
 source "${SERVICE_DIR}/service.conf"
 
-source "${SERVICE_ROOT_DIR}/lib/service.get_log_dir.sh"
-source "${SERVICE_ROOT_DIR}/lib/service.get_log_file.sh"
-source "${SERVICE_ROOT_DIR}/lib/service.get_commands.sh"
-source "${SERVICE_ROOT_DIR}/lib/array.unique.sh"
-source "${SERVICE_ROOT_DIR}/lib/array.contains.sh"
-source "${SERVICE_ROOT_DIR}/lib/array.index.sh"
-source "${SERVICE_ROOT_DIR}/lib/file.get_relative_path.sh"
+import "lib/service.get_log_dir"
+import "lib/service.get_log_file"
+import "lib/service.get_commands"
+import "lib/array.unique"
+import "lib/array.contains"
+import "lib/array.index"
+import "lib/file.get_relative_path"
 
 ALL_SERVICES=$(find "${SERVICE_ROOT_DIR}/" -name "*.service")
 
