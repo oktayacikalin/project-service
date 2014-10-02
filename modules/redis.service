@@ -67,7 +67,7 @@ function main () {
             [ "$output" == "OK" ] || (echo $output ; exit 1)
         ;;
 
-        'redis-shell')
+        'shell')
             echo  # Put the prompt into a new line.
             $CLIEXEC -h $REDIS_HOST -p $REDIS_PORT
         ;;

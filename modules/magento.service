@@ -72,14 +72,17 @@ function main () {
             popd > /dev/null
         ;;
 
+        'shell')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            echo  # Put the prompt into a new line.
+            magerun shell
+            popd > /dev/null
+        ;;
+
         'magerun')
             pushd "${MAGENTO_HOME}" > /dev/null
             echo  # Put the prompt into a new line.
-            if [[ ${#@} = 1 ]]; then
-                magerun shell
-            else
-                magerun ${@:2}
-            fi
+            magerun ${@:2}
             popd > /dev/null
         ;;
 

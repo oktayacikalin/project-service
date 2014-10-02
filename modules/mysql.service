@@ -158,7 +158,7 @@ function main () {
             fi
         ;;
 
-        'mysql-shell')
+        'shell')
             echo  # Put the prompt into a new line.
             mysql ${MYSQL_CONNECTION_PARAMS} ${@:2}
         ;;
