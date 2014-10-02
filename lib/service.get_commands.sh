@@ -6,8 +6,6 @@
 
 function service.get_commands () {
     local service=$1
-    local pattern_a="'['A-Za-z0-9 |-]+'"
-    local pattern_b='"["A-Za-z0-9 |-]+"'
     local squote="'"
     local dquote='"'
     local commands=()
@@ -21,13 +19,11 @@ function service.get_commands () {
             local base=$(tr -d '"' <<< ${base[1]} | tr -d "'")
             local source=${base//\$\{SERVICE_DIR\}/${SERVICE_DIR}}
             source=${source//\$\{SERVICE_ROOT_DIR\}/${SERVICE_ROOT_DIR}}
-            local base_commands=($(grep -oE "^\s+($pattern_a|$pattern_b)\)" $source |
-                                 sed "s![$squote$dquote]!!g" | tr -d ' ' | cut -d')' -f1))
+            local base_commands=($(pcregrep -o2 -M "(case .* in\n|;;)([^)]*)\)" $source | sed -e "s!#.*!!g" -e "s![$squote$dquote|\ *]! !g"))
             commands+=(${base_commands[@]})
         done
     fi
-    local local_commands=($(grep -oE "^\s+($pattern_a|$pattern_b)\)" $service |
-                          sed "s![$squote$dquote]!!g" | tr -d ' ' | tr '|' ' ' | cut -d')' -f1))
+    local local_commands=($(pcregrep -o2 -M "(case .* in\n|;;)([^)]*)\)" $service | sed -e "s!#.*!!g" -e "s![$squote$dquote|\ *]! !g"))
     commands+=(${local_commands[@]})
     array.unique "${commands[@]}"
 }
