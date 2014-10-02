@@ -111,6 +111,12 @@ function handle_command () {
             for service in ${AFFECTED_SERVICES[@]}; do
                 commands=$(service.get_commands "$service")
                 commands=($(echo "$commands" | sed 's!NOOP!!g'))
+                local log_dir=$(service.get_log_dir "$service")
+                local log_file=$(service.get_log_file "$service")
+                if [ "$log_dir" ] || [ "$log_file" ]; then
+                    commands+=(tail)
+                fi
+                commands+=(help)
                 if [ "$commands" ]; then
                     name=${service##*/}
                     echo -en "\e[33m${name%.*}\e[2m:\e[22m\e[39m "
@@ -121,8 +127,14 @@ function handle_command () {
                             echo -ne "\e[34m"
                         elif [[ "${command}" =~ "install" ]]; then
                             echo -ne "\e[31m"
+                        elif [[ "${command}" =~ "shell" ]]; then
+                            echo -ne "\e[35m"
+                        elif [[ "${command}" =~ "cache" ]]; then
+                            echo -ne "\e[36m"
+                        elif [[ "${command}" =~ "tail" ]] || [[ "${command}" =~ "help" ]]; then
+                            echo -ne "\e[2m"
                         fi
-                        echo -ne "${command}\e[39m "
+                        echo -ne "${command}\e[0m "
                     done
                     echo
                 fi
