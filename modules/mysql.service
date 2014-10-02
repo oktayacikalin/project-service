@@ -118,7 +118,7 @@ function main () {
             sudo rm '/etc/init/mysql.override'
         ;;
 
-        'bootstrap')
+        'install')
             mysql_install_db --defaults-file="${MYSQL_CONF}"
             $0 start
             proc.wait_for_pid_in_file "${MYSQL_PID}"
