@@ -22,11 +22,45 @@ export JETTY_LOGS="$SOLR_LOGS"
 
 SERVICE_LOG_DIR="$SOLR_LOGS"
 
-mkdir -p "${SOLR_PID}" "${SOLR_LOGS}"
+CACHE_DIR="${CACHE_DIR}/solr"
+
+mkdir -p "${SOLR_HOME}" "${SOLR_PID}" "${SOLR_LOGS}" "${CACHE_DIR}"
+
+
+function download_package () {
+    echo -n "checking for solr package \"${package_file}\"... "
+    curl -s "${SOLR_DOWNLOAD_URL}.md5" -o "${package_file}.md5"
+    if ! md5sum --check --status "${package_file}.md5"; then
+        echo "downloading package..."
+        curl --progress-bar "${SOLR_DOWNLOAD_URL}" -o "${package_file}"
+    fi
+}
+
+
+function install_package () {
+    if ! tar xzf "${package_file}"; then
+        echo "ERROR: Could not unpack package."
+        exit 1
+    fi
+    if ! mv "${package_file%.*}/example"/* "${SOLR_HOME}/"; then
+        echo "ERROR: Could not move files into SOLR_HOME."
+        exit 1
+    fi
+}
 
 
 function main () {
     case "$COMMAND" in
+        'install')
+            pushd "${CACHE_DIR}" > /dev/null
+            local package_file="${SOLR_DOWNLOAD_URL##*/}"
+            if [ ! -e "${package_file}" ] || [ ! -e "${package_file}.md5" ]; then
+                download_package
+            fi
+            install_package
+            popd > /dev/null
+        ;;
+
         'start')
             result=$("${SOLR_INIT_SCRIPT}" start)
             RETVAL="$?"
