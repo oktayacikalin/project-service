@@ -17,3 +17,10 @@ function function.extends () {
     function.rename . "${name}"
     function.prepend "${name}" "function.rename __${name} parent"
 }
+
+
+# Call this in an extended function body if nothing should be done.
+# (bash requires you to give at least some body. So this fixes the gap.)
+function pass () {
+    echo -n
+}
