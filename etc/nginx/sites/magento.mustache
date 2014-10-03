@@ -80,6 +80,7 @@ server {
     }
 
     location /skin/ {
+        add_header Access-Control-Allow-Origin *;
         if (!-e $request_filename) { return 404; }
     }
     {{/has_dynamic_static_files}}
