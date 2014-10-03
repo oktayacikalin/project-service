@@ -42,6 +42,7 @@ function install_package () {
         echo "ERROR: Could not unpack package."
         exit 1
     fi
+    rm -rf "${SOLR_HOME}"/*
     if ! mv "${package_file%.*}/example"/* "${SOLR_HOME}/"; then
         echo "ERROR: Could not move files into SOLR_HOME."
         exit 1
