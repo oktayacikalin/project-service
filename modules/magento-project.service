@@ -1,0 +1,316 @@
+#!/bin/bash
+
+# Service control script for high-level managing the Magento project.
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
+[ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
+[ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
+
+import "lib/service.run_main"
+import "lib/assert.defined"
+import "lib/var.default"
+import "lib/ssh.find_latest_file"
+import "lib/ssh.download_file"
+import "lib/array.join"
+import "lib/mysql.create_database"
+import "lib/mysql.drop_database"
+import "lib/mysql.dump_database"
+import "lib/mysql.get_database_size"
+import "lib/mysql.shell_cmd"
+import "lib/magento.has_admin_user"
+import "lib/magento.create_admin_user"
+import "lib/magento.set_admin_user_password"
+import "lib/magento.get_db_connection_params"
+import "lib/magento.get_eav_attribute_id"
+import "lib/magento.gen_anon_sql_statements"
+import "lib/magento.gen_config_sql_statements"
+
+import "etc/default/mysql"
+import "etc/default/magento"
+import "etc/default/magento-project"
+if [ "${MP_SOLR_MANAGE}" = "1" ]; then
+    import "etc/default/solr"
+fi
+
+assert.defined MAGENTO_HOME "Please configure the magento.service first!"
+
+MYSQL_OPTIMIZATION_SQL_FILE="${SERVICE_ROOT_DIR}/scripts/mysql-import-optimizations.sql"
+
+CACHE_DIR="${CACHE_DIR}/magento-project"
+SPLITTED_DIR="${CACHE_DIR}/splitted"
+DUMP_FILE="${CACHE_DIR}/dump.sql.gz"
+DUMP_FILE_FILENAME_FILE="${CACHE_DIR}/dump.sql.gz.filename"
+
+mkdir -p "${CACHE_DIR}" "${SPLITTED_DIR}"
+
+
+function find_splitted_dump_files () {
+    # TODO First take header, then structures, then datas and finally the footer.
+    #      Don't rely on "ls -rtl" alone here!
+    local files=$(ls -rt *.sql.gz)
+    echo "${files}"
+}
+
+
+function get_label_of_filename () {
+    local name=$(basename "$1")
+    name=${name%.sql.gz}
+    name=$(sed -e 's!.data! (data)!g' -e 's!.structure! (structure)!g' <<< "${name}")
+    echo "${name}"
+}
+
+
+function import_dump_files () {
+    local filename="${CACHE_DIR}"/$(basename "${MYSQL_OPTIMIZATION_SQL_FILE}").gz
+    gzip -c "${MYSQL_OPTIMIZATION_SQL_FILE}" > "${filename}"
+    local prefix=("${filename}")
+    local files=("${prefix[@]}" "$@")
+    for file in "${files[@]}"; do
+        local name=$(get_label_of_filename "${file}")
+        pv -N "${name}" "${file}" | gunzip | \
+            sed 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/g' | \
+            sed 's/ENGINE=InnoDB/ENGINE=InndoDB ROW_FORMAT=COMPRESSED/g'
+    done | mysql.shell_cmd $(magento.get_db_connection_params default)
+}
+
+
+function execute_queries () {
+    local queries=("$@")
+    for query in "${queries[@]}"; do
+        echo -ne "\e[2m> $query ... "
+        output=$(mysql.shell_cmd $(magento.get_db_connection_params default) -vv <<< "${query}" 2>&1)
+        err=$?
+        if [ $err = 0 ]; then
+            local num=$(grep -E -o --color=never '[0-9]+ row[s]? affected' <<< "${output}")
+            if [ "$num" != "0 rows affected" ]; then
+                echo -ne "\r\e[22m> $query ... "
+            fi
+            echo "$num"
+        else
+            echo -ne "\r\e[22m> $query ... \e[31m"
+            grep -E -o --color=never 'ERROR .*$' <<< "${output}"
+        fi
+        echo -ne "\e[22m\e[39m"
+    done
+}
+
+
+# General installation of the configuration.
+# Should be sufficient for most configurations.
+function install_solr_configuration () {
+    pushd solr > /dev/null
+    if [ "${MP_SOLR_MAGENTO_LINK_MODE}" == "symlink" ]; then
+        rm -rf conf
+        if ! ln -s "${MP_SOLR_MAGENTO_CONF_PATH}" .; then
+            echo "ERROR: Could not link to Magento solr configuration dir."
+            exit 1
+        fi
+    elif [ "${MP_SOLR_MAGENTO_LINK_MODE}" == "copy" ]; then
+        if ! cp -a "${MP_SOLR_MAGENTO_CONF_PATH}"/* conf/; then
+            echo "ERROR: Could not copy Magento solr configuration dir."
+            exit 1
+        fi
+    else
+        echo "ERROR: Invalid link mode. Has to be one of: symlink, copy"
+        exit 1
+    fi
+    popd > /dev/null
+}
+
+
+# Customization of the installed configuration.
+# Extend this for adding more customizations.
+function customize_solr_configuration () {
+    sed -i "s!collection1!${MP_SOLR_DEFAULT_CORE_NAME}!g" "${SOLR_HOME}/solr/solr.xml"
+}
+
+
+function main () {
+    case "$COMMAND" in
+        'download-db-dump')
+            latest=$(ssh.find_latest_file "${MP_REMOTE_USER}" "${MP_REMOTE_HOST}" "${MP_REMOTE_PORT}" "${MP_REMOTE_FILE}")
+
+            if [ -z "$latest" ]; then
+                echo "No matching file found on target!"
+                return 1
+            fi
+
+            ssh.download_file "${MP_REMOTE_USER}" "${MP_REMOTE_HOST}" "${MP_REMOTE_PORT}" \
+                              "${latest}" "${DUMP_FILE}" || exit $?
+            basename "${latest}" > "${DUMP_FILE_FILENAME_FILE}"
+        ;;
+
+        # Splits and strips the dump in one go.
+        'split-db-dump')
+            local dump_file=$(readlink -f ${2:-${DUMP_FILE}})
+            if [ ! -e "${dump_file}" ]; then
+                echo "ERROR: Split failed. File not found: ${dump_file}"
+                exit 1
+            fi
+            excludes=$(array.join , ${MP_TRUNCATABLE_TABLES})
+            rm -rf "${SPLITTED_DIR}"/*
+            pushd "${SPLITTED_DIR}" > /dev/null
+            "${MYSQL_DUMP_SPLITTER}" "${dump_file}" "${excludes}"
+            popd > /dev/null
+            rm -f "${SPLITTED_DIR}"/*.database.sql.gz
+        ;;
+
+        # Splits the dump without stripping it.
+        'split-full-db-dump')
+            local dump_file=$(readlink -f ${2:-${DUMP_FILE}})
+            if [ ! -e "${dump_file}" ]; then
+                echo "ERROR: Split failed. File not found: ${dump_file}"
+                exit 1
+            fi
+            rm -rf "${SPLITTED_DIR}"/*
+            pushd "${SPLITTED_DIR}" > /dev/null
+            "${MYSQL_DUMP_SPLITTER}" "${dump_file}"
+            popd > /dev/null
+            rm -f "${SPLITTED_DIR}"/*.database.sql.gz
+        ;;
+
+        # Strips table data from already splitted dump.
+        'strip-splitted-db-dump')
+            for table_name in ${MP_TRUNCATABLE_TABLES}; do
+                echo -n '.'
+                rm -f "${SPLITTED_DIR}/${table_name}.data.sql.gz"
+            done
+        ;;
+
+        # Joins splitted dump into one file.
+        'join-db-dump')
+            local dump_file=$(readlink -f ${2:-${DUMP_FILE}})
+            pushd "${SPLITTED_DIR}" > /dev/null
+            files=$(find_splitted_dump_files)
+            for file in $files; do
+                echo -n . >&2
+                cat "${file}"
+            done > "${dump_file}"
+            popd > /dev/null
+            echo -n " "
+        ;;
+
+        'import-db-dump')
+            local dump_file=$(readlink -f ${2:-${DUMP_FILE}})
+            if [ ! -e "${dump_file}" ]; then
+                echo "ERROR: Import failed. File not found: ${dump_file}"
+                exit 1
+            fi
+            mysql.drop_database $(magento.get_db_connection_params default)
+            mysql.create_database $(magento.get_db_connection_params default)
+            pushd "${SPLITTED_DIR}" > /dev/null
+            echo  # Put the prompt into a new line.
+            import_dump_files "${dump_file}"
+            popd > /dev/null
+        ;;
+
+        'import-splitted-db-dump')
+            mysql.drop_database $(magento.get_db_connection_params default)
+            mysql.create_database $(magento.get_db_connection_params default)
+            pushd "${SPLITTED_DIR}" > /dev/null
+            echo  # Put the prompt into a new line.
+            import_dump_files $(find_splitted_dump_files)
+            popd > /dev/null
+        ;;
+
+        'export-db-dump')
+            local dump_file=$(readlink -f ${2:-${DUMP_FILE}})
+            bytes=$(mysql.get_database_size $(magento.get_db_connection_params default))
+            echo  # Put the prompt into a new line.
+            mysql.dump_database $(magento.get_db_connection_params default) | pv --size=$bytes --name="Creating database dump" | gzip > "${dump_file}"
+        ;;
+
+        'anonymize-db')
+            echo  # Put the prompt into a new line.
+            statements=()
+            magento.gen_anon_sql_statements
+            execute_queries "${statements[@]}"
+        ;;
+
+        'configure-db')
+            echo  # Put the prompt into a new line.
+            statements=()
+            magento.gen_config_sql_statements
+            execute_queries "${statements[@]}"
+        ;;
+
+        'configure-admin-user')
+            if magento.has_admin_user admin "${MP_ANON_ADMIN_USERNAME}"; then
+                magento.set_admin_user_password "${MP_ANON_ADMIN_USERNAME}" "${MP_ANON_ADMIN_PASSWORD}"
+            else
+                magento.create_admin_user "${MP_ANON_ADMIN_USERNAME}" "${MP_ANON_ADMIN_PASSWORD}" \
+                    "${MP_ANON_ADMIN_USERNAME}@${BASE_DOMAIN}" Admin Admin
+            fi
+        ;;
+
+        'configure-solr')
+            if [ "${MP_SOLR_MANAGE}" != "1" ]; then
+                echo "WARNING: You have to enable MP_SOLR_MANAGE first."
+                return
+            fi
+            pushd "${SOLR_HOME}" > /dev/null
+            install_solr_configuration
+            customize_solr_configuration
+            popd > /dev/null
+        ;;
+
+        'install')
+            # We assume that:
+            # - The project env has been set up.
+            # - The repo has been checked out properly.
+            # - Magento's local.xml has been configured correctly.
+            # - All services are running.
+            # - The dump has been downloaded.
+            # - The dump has been splitted and stripped.
+
+            echo  # Put the prompt into a new line.
+            echo "Importing splitted dump..."
+            $0 import-splitted-db-dump
+            echo -n "Anonymizing database..."
+            $0 anonymize-db
+            echo -n "Configuring database..."
+            $0 configure-db
+            echo -n "Configuring admin user '${MP_ANON_ADMIN_USERNAME}' with password '"${MP_ANON_ADMIN_PASSWORD}"'..."
+            $0 configure-admin-user
+
+            if [ "${MP_SOLR_MANAGE}" = "1" ]; then
+                echo -n "Configuring solr..."
+                # TODO try not to fail on stop if solr is not running.
+                "${SERVICE_DIR}/solr.service" stop
+                "${SERVICE_DIR}/solr.service" install
+                $0 configure-solr
+                "${SERVICE_DIR}/solr.service" start
+            fi
+
+            echo "Flushing the cache..."
+            "${SERVICE_DIR}/magento.service" clear-cache
+
+            echo "Executing migration scripts..."
+            "${SERVICE_DIR}/magento.service" migrate
+
+            echo "Updating search index..."
+            "${SERVICE_DIR}/magento.service" reindex-search
+
+            echo "Flushing the cache..."
+            "${SERVICE_DIR}/magento.service" clear-cache
+        ;;
+
+        # 'chain-test')
+        #     echo ROOT
+        # ;;
+
+        'NOOP')
+            # NOOP
+        ;;
+
+        *)
+            exit 99
+        ;;
+    esac
+}
+
+
+service.run_main "$@"
