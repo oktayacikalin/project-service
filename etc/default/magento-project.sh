@@ -7,10 +7,14 @@ var.default MP_REMOTE_FILE "backups/magento-*.sql.gz"
 var.default MP_TRUNCATABLE_TABLES "
     catalog_compare_item
     core_cache
+    core_cache_option
+    core_cache_tag
+    core_session
     dataflow_batch_export
     dataflow_batch_import
     enterprise_admin_passwords
     index_event
+    index_process_event
     log_customer
     log_quote
     log_summary
@@ -20,6 +24,8 @@ var.default MP_TRUNCATABLE_TABLES "
     log_visitor
     log_visitor_info
     log_visitor_online
+    enterprise_logging_event
+    enterprise_logging_event_changes
     report_compared_product_index
     report_event
     report_viewed_product_index
