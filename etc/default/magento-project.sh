@@ -7,7 +7,6 @@ var.default MP_REMOTE_FILE "backups/magento-*.sql.gz"
 var.default MP_TRUNCATABLE_TABLES "
     catalog_compare_item
     core_cache
-    core_cache_option
     core_cache_tag
     core_session
     dataflow_batch_export
