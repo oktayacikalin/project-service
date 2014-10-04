@@ -32,18 +32,22 @@ function main () {
 
         'disable-auto-migrations')
             pushd "${MAGENTO_HOME}" > /dev/null
-            # TODO Write file into overlay folder which PHP will include on top.
-            for command in ${MAGE_COMMANDS[@]}; do
-                sed -e "s!^\(\s*\)${command}!\1// ${command}!g" -i $MAGE_FILE
+            # TODO Write files into overlay folder which PHP will include on top.
+            for file in ${MAGENTO_MIGRATION_FILES[@]}; do
+                for command in ${MAGENTO_MIGRATION_COMMANDS[@]}; do
+                    sed -e "s!^\(\s*\)${command}!\1// ${command}!g" -i "${MAGENTO_HOME}/${file}"
+                done
             done
             popd > /dev/null
         ;;
 
         'enable-auto-migrations')
             pushd "${MAGENTO_HOME}" > /dev/null
-            # TODO Write file into overlay folder which PHP will include on top.
-            for command in ${MAGE_COMMANDS[@]}; do
-                sed -e "s!^\(\s*\)// ${command}!\1${command}!g" -i $MAGE_FILE
+            # TODO Write files into overlay folder which PHP will include on top.
+            for file in ${MAGENTO_MIGRATION_FILES[@]}; do
+                for command in ${MAGENTO_MIGRATION_COMMANDS[@]}; do
+                    sed -e "s!^\(\s*\)// ${command}!\1${command}!g" -i "${MAGENTO_HOME}/${file}"
+                done
             done
             popd > /dev/null
         ;;
