@@ -82,7 +82,7 @@ function main () {
         'magerun')
             pushd "${MAGENTO_HOME}" > /dev/null
             echo  # Put the prompt into a new line.
-            magerun ${@:2}
+            magerun "${@:2}"
             popd > /dev/null
         ;;
 

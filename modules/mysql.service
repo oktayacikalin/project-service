@@ -160,7 +160,7 @@ function main () {
 
         'shell')
             echo  # Put the prompt into a new line.
-            mysql ${MYSQL_CONNECTION_PARAMS} ${@:2}
+            mysql ${MYSQL_CONNECTION_PARAMS} "${@:2}"
         ;;
 
         'mytop')
