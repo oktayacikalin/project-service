@@ -79,16 +79,19 @@ function import_dump_files () {
 
 function execute_queries () {
     local queries=("$@")
+    local truncated_query
     for query in "${queries[@]}"; do
-        echo -ne "\e[2m> $query ... "
+        truncated_query="$(tr '\n' ' ' <<< $query)"
+        truncated_query="${truncated_query:0:76}"
+        echo -ne "\e[2m> ${truncated_query} ... "
         output=$(mysql.shell_cmd $(magento.get_db_connection_params default) -vv <<< "${query}" 2>&1)
         err=$?
         if [ $err = 0 ]; then
             local num=$(grep -E -o --color=never '[0-9]+ row[s]? affected' <<< "${output}")
             if [ "$num" != "0 rows affected" ]; then
-                echo -ne "\r\e[22m> $query ... "
+                echo -ne "\e[22m"
             fi
-            echo "$num"
+            echo -e "\r> $query ... $num"
         else
             echo -ne "\r\e[22m> $query ... \e[31m"
             grep -E -o --color=never 'ERROR .*$' <<< "${output}"
