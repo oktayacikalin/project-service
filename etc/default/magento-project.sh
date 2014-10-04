@@ -31,8 +31,30 @@ var.default MP_TRUNCATABLE_TABLES "
     report_viewed_product_index
     sales_payment_transaction
 "
-# TODO Also truncate table data of the flat indexers, which will
-#      rebuild the data later on anyway.
+
+# TODO Implement additional step which truncates these.
+# TODO Implement additional step which reindexes these.
+var.default MP_TRUNCATABLE_INDEX_TABLES "
+    catalog_category_flat_store_1
+    catalog_category_flat_store_2
+    catalog_category_flat_store_3
+    catalog_category_flat_store_4
+    catalog_category_flat_store_5
+    catalog_category_flat_store_6
+    catalog_category_flat_store_7
+    catalog_category_flat_store_8
+    catalog_category_flat_store_9
+    catalog_product_flat_0
+    catalog_product_flat_1
+    catalog_product_flat_2
+    catalog_product_flat_3
+    catalog_product_flat_4
+    catalog_product_flat_5
+    catalog_product_flat_6
+    catalog_product_flat_7
+    catalog_product_flat_8
+    catalog_product_flat_9
+"
 
 # TODO Will be obsolete as soon as we can query Magento for the correct connection params.
 var.default MP_LOCAL_DBNAME "magento"
