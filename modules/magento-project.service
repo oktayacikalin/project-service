@@ -119,44 +119,52 @@ function main () {
         # Splits and strips the dump in one go.
         'split-db-dump')
             local dump_file=$(readlink -f ${2:-${DUMP_FILE}})
+            local splitted_dir=$(readlink -f ${3:-${SPLITTED_DIR}})
             if [ ! -e "${dump_file}" ]; then
                 log.error "Split failed. File not found: ${dump_file}"
                 exit 1
             fi
+            if [ ! -e "${splitted_dir}" ]; then
+                log.error "Split failed. Dir not found: ${splitted_dir}"
+                exit 1
+            fi
             excludes=$(array.join , ${MP_TRUNCATABLE_TABLES})
-            rm -rf "${SPLITTED_DIR}"/*
-            pushd "${SPLITTED_DIR}" > /dev/null
+            rm -rf "${splitted_dir}"/*
+            pushd "${splitted_dir}" > /dev/null
             "${MYSQL_DUMP_SPLITTER}" "${dump_file}" "${excludes}"
             popd > /dev/null
-            rm -f "${SPLITTED_DIR}"/*.database.sql.gz
+            rm -f "${splitted_dir}"/*.database.sql.gz
         ;;
 
         # Splits the dump without stripping it.
         'split-full-db-dump')
             local dump_file=$(readlink -f ${2:-${DUMP_FILE}})
+            local splitted_dir=$(readlink -f ${3:-${SPLITTED_DIR}})
             if [ ! -e "${dump_file}" ]; then
                 log.error "Split failed. File not found: ${dump_file}"
                 exit 1
             fi
-            rm -rf "${SPLITTED_DIR}"/*
-            pushd "${SPLITTED_DIR}" > /dev/null
+            rm -rf "${splitted_dir}"/*
+            pushd "${splitted_dir}" > /dev/null
             "${MYSQL_DUMP_SPLITTER}" "${dump_file}"
             popd > /dev/null
-            rm -f "${SPLITTED_DIR}"/*.database.sql.gz
+            rm -f "${splitted_dir}"/*.database.sql.gz
         ;;
 
         # Strips table data from already splitted dump.
         'strip-splitted-db-dump')
+            local splitted_dir=$(readlink -f ${2:-${SPLITTED_DIR}})
             for table_name in ${MP_TRUNCATABLE_TABLES}; do
                 echo -n '.'
-                rm -f "${SPLITTED_DIR}/${table_name}.data.sql.gz"
+                rm -f "${splitted_dir}/${table_name}.data.sql.gz"
             done
         ;;
 
         # Joins splitted dump into one file.
         'join-db-dump')
             local dump_file=$(readlink -f ${2:-${DUMP_FILE}})
-            pushd "${SPLITTED_DIR}" > /dev/null
+            local splitted_dir=$(readlink -f ${3:-${SPLITTED_DIR}})
+            pushd "${splitted_dir}" > /dev/null
             files=$(find_splitted_dump_files)
             for file in $files; do
                 echo -n . >&2
@@ -179,9 +187,10 @@ function main () {
         ;;
 
         'import-splitted-db-dump')
+            local splitted_dir=$(readlink -f ${2:-${SPLITTED_DIR}})
             mysql.drop_database $(magento.get_db_connection_params default)
             mysql.create_database $(magento.get_db_connection_params default)
-            pushd "${SPLITTED_DIR}" > /dev/null
+            pushd "${splitted_dir}" > /dev/null
             echo  # Put the prompt into a new line.
             import_dump_files $(find_splitted_dump_files)
             popd > /dev/null
