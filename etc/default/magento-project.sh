@@ -70,3 +70,5 @@ var.default MP_SOLR_MAGENTO_CONF_PATH "${MAGENTO_HOME}/lib/Apache/Solr/conf"
 var.default MP_SOLR_MAGENTO_LINK_MODE "copy"
 # var.default MP_SOLR_MAGENTO_LINK_MODE "symlink"
 var.default MP_SOLR_DEFAULT_CORE_NAME "default"
+# See magento.service for possible reindex-* commands.
+var.default MP_REINDEX_MODE "reindex-search"

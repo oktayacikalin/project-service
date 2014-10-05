@@ -295,7 +295,7 @@ function main () {
             "${SERVICE_DIR}/magento.service" migrate
 
             echo "Updating search index..."
-            "${SERVICE_DIR}/magento.service" reindex-search
+            "${SERVICE_DIR}/magento.service" "${MP_REINDEX_MODE}"
 
             echo "Flushing the cache..."
             "${SERVICE_DIR}/magento.service" clear-cache
