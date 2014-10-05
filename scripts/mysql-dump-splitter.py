@@ -85,8 +85,13 @@ def main(source_file, excludes):
         line = str(data, 'UTF-8', 'replace')
 
         if footer:
-            footer.append(data)
-            continue
+            match = regex_indicator.search(buffer + line)
+            if not match:
+                buffer += line
+                footer.append(data)
+                continue
+            else:
+                footer = []
 
         try:
             last_lines[0] = last_lines[1]
