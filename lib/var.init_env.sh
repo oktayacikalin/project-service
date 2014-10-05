@@ -17,6 +17,7 @@ if [ -z "${IMPORT_PATH}" ]; then
 
     IMPORT_PATH=("${BASE_DIR}" "${SERVICE_ROOT_DIR}")
     source "${SERVICE_ROOT_DIR}/lib/import.sh"
+    source "${SERVICE_ROOT_DIR}/lib/log.sh"
 
     COMMAND="$1"
 fi
