@@ -107,7 +107,7 @@ function main () {
             latest=$(ssh.find_latest_file "${MP_REMOTE_USER}" "${MP_REMOTE_HOST}" "${MP_REMOTE_PORT}" "${MP_REMOTE_FILE}")
 
             if [ -z "$latest" ]; then
-                echo "No matching file found on target!"
+                log.error "No matching file found on target!"
                 return 1
             fi
 
@@ -120,7 +120,7 @@ function main () {
         'split-db-dump')
             local dump_file=$(readlink -f ${2:-${DUMP_FILE}})
             if [ ! -e "${dump_file}" ]; then
-                echo "ERROR: Split failed. File not found: ${dump_file}"
+                log.error "Split failed. File not found: ${dump_file}"
                 exit 1
             fi
             excludes=$(array.join , ${MP_TRUNCATABLE_TABLES})
@@ -135,7 +135,7 @@ function main () {
         'split-full-db-dump')
             local dump_file=$(readlink -f ${2:-${DUMP_FILE}})
             if [ ! -e "${dump_file}" ]; then
-                echo "ERROR: Split failed. File not found: ${dump_file}"
+                log.error "Split failed. File not found: ${dump_file}"
                 exit 1
             fi
             rm -rf "${SPLITTED_DIR}"/*
@@ -169,7 +169,7 @@ function main () {
         'import-db-dump')
             local dump_file=$(readlink -f ${2:-${DUMP_FILE}})
             if [ ! -e "${dump_file}" ]; then
-                echo "ERROR: Import failed. File not found: ${dump_file}"
+                log.error "Import failed. File not found: ${dump_file}"
                 exit 1
             fi
             mysql.drop_database $(magento.get_db_connection_params default)
