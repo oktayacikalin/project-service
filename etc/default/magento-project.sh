@@ -64,11 +64,5 @@ var.default MP_ANON_ADMIN_PASSWORD "password"
 
 var.default MP_BASE_DOMAIN_IP $(grep "${BASE_DOMAIN}" ${ETC_DIR}/dnsmasq/hosts | cut -d' ' -f1)
 
-# Manage the solr installation and configuration? 0=no, 1=yes
-var.default MP_SOLR_MANAGE 0
-var.default MP_SOLR_MAGENTO_CONF_PATH "${MAGENTO_HOME}/lib/Apache/Solr/conf"
-var.default MP_SOLR_MAGENTO_LINK_MODE "copy"
-# var.default MP_SOLR_MAGENTO_LINK_MODE "symlink"
-var.default MP_SOLR_DEFAULT_CORE_NAME "default"
 # See magento.service for possible reindex-* commands.
 var.default MP_REINDEX_MODE "reindex-search"

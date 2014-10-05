@@ -42,11 +42,44 @@ function install_package () {
         echo "ERROR: Could not unpack package."
         exit 1
     fi
+
     rm -rf "${SOLR_HOME}"/*
     if ! mv "${package_file%.*}/example"/* "${SOLR_HOME}/"; then
         echo "ERROR: Could not move files into SOLR_HOME."
         exit 1
     fi
+
+    pushd "${SOLR_HOME}/solr" > /dev/null
+    if [ "${SOLR_LINK_MODE}" == "symlink" ]; then
+        rm -rf conf
+        if ! ln -s "${SOLR_LINK_CONF_PATH}" .; then
+            echo "ERROR: Could not link to given solr configuration dir."
+            exit 1
+        fi
+    elif [ "${SOLR_LINK_MODE}" == "copy" ]; then
+        if ! cp -a "${SOLR_LINK_CONF_PATH}"/* conf/; then
+            echo "ERROR: Could not copy given solr configuration dir."
+            exit 1
+        fi
+    elif [ "${SOLR_LINK_MODE}" == "none" ]; then
+        pass
+    else
+        echo "ERROR: Invalid link mode. Has to be one of: none, symlink, copy"
+        exit 1
+    fi
+    popd > /dev/null
+}
+
+
+# Customization of the installed configuration.
+# Extend this for adding more customizations.
+function customize_installation () {
+    if [ ! -e "${SOLR_HOME}/solr/solr.xml-bak" ]; then
+        cp -a "${SOLR_HOME}/solr/solr.xml" "${SOLR_HOME}/solr/solr.xml-bak"
+    else
+        cp -a "${SOLR_HOME}/solr/solr.xml-bak" "${SOLR_HOME}/solr/solr.xml"
+    fi
+    sed -i "s!collection1!${SOLR_DEFAULT_CORE_NAME}!g" "${SOLR_HOME}/solr/solr.xml"
 }
 
 
@@ -59,6 +92,7 @@ function main () {
                 download_package
             fi
             install_package
+            customize_installation
             popd > /dev/null
         ;;
 

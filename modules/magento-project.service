@@ -101,36 +101,6 @@ function execute_queries () {
 }
 
 
-# General installation of the configuration.
-# Should be sufficient for most configurations.
-function install_solr_configuration () {
-    pushd solr > /dev/null
-    if [ "${MP_SOLR_MAGENTO_LINK_MODE}" == "symlink" ]; then
-        rm -rf conf
-        if ! ln -s "${MP_SOLR_MAGENTO_CONF_PATH}" .; then
-            echo "ERROR: Could not link to Magento solr configuration dir."
-            exit 1
-        fi
-    elif [ "${MP_SOLR_MAGENTO_LINK_MODE}" == "copy" ]; then
-        if ! cp -a "${MP_SOLR_MAGENTO_CONF_PATH}"/* conf/; then
-            echo "ERROR: Could not copy Magento solr configuration dir."
-            exit 1
-        fi
-    else
-        echo "ERROR: Invalid link mode. Has to be one of: symlink, copy"
-        exit 1
-    fi
-    popd > /dev/null
-}
-
-
-# Customization of the installed configuration.
-# Extend this for adding more customizations.
-function customize_solr_configuration () {
-    sed -i "s!collection1!${MP_SOLR_DEFAULT_CORE_NAME}!g" "${SOLR_HOME}/solr/solr.xml"
-}
-
-
 function main () {
     case "$COMMAND" in
         'download-db-dump')
@@ -278,15 +248,6 @@ function main () {
             $0 configure-db
             echo -n "Configuring admin user '${MP_ANON_ADMIN_USERNAME}' with password '"${MP_ANON_ADMIN_PASSWORD}"'..."
             $0 configure-admin-user
-
-            if [ "${MP_SOLR_MANAGE}" = "1" ]; then
-                echo -n "Configuring solr..."
-                # TODO try not to fail on stop if solr is not running.
-                "${SERVICE_DIR}/solr.service" stop
-                "${SERVICE_DIR}/solr.service" install
-                $0 configure-solr
-                "${SERVICE_DIR}/solr.service" start
-            fi
 
             echo "Flushing the cache..."
             "${SERVICE_DIR}/magento.service" clear-cache
