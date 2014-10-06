@@ -242,7 +242,7 @@ function main () {
             $0 anonymize-db
             echo -n "Configuring database..."
             $0 configure-db
-            echo -n "Configuring admin user '${MP_ANON_ADMIN_USERNAME}' with password '"${MP_ANON_ADMIN_PASSWORD}"'..."
+            echo "Configuring admin user '${MP_ANON_ADMIN_USERNAME}' with password '"${MP_ANON_ADMIN_PASSWORD}"'..."
             $0 configure-admin-user
 
             echo "Flushing the cache..."
