@@ -11,6 +11,7 @@
 
 import "lib/service.run_main"
 import "lib/var.default"
+import "lib/file.get_relative_path"
 
 import "etc/default/solr"
 
@@ -19,6 +20,7 @@ export JETTY_HOST="$SOLR_HOST"
 export JETTY_PORT="$SOLR_PORT"
 export JETTY_RUN="$SOLR_PID"
 export JETTY_LOGS="$SOLR_LOGS"
+export JAVA_OPTIONS="-Djava.util.logging.config.file=${SOLR_HOME}/${SOLR_LOGS_PROPERTIES_FILE}"
 
 SERVICE_LOG_DIR="$SOLR_LOGS"
 
@@ -38,17 +40,20 @@ function download_package () {
 
 
 function install_package () {
+    # Try to unpack the solr package.
     if ! tar xzf "${package_file}"; then
         echo "ERROR: Could not unpack package."
         exit 1
     fi
 
+    # Move the interesting things into our working dir.
     rm -rf "${SOLR_HOME}"/*
     if ! mv "${package_file%.*}/example"/* "${SOLR_HOME}/"; then
         echo "ERROR: Could not move files into SOLR_HOME."
         exit 1
     fi
 
+    # Prepare the configuration (copy, symlink, none).
     pushd "${SOLR_HOME}/solr" > /dev/null
     if [ "${SOLR_LINK_MODE}" == "symlink" ]; then
         rm -rf conf
@@ -69,6 +74,17 @@ function install_package () {
         exit 1
     fi
     popd > /dev/null
+
+    # If the solr etc dir is not present, just symlink it to the defaults.
+    if [ ! -e "${ETC_DIR}/solr" ]; then
+        pushd "${ETC_DIR}" > /dev/null
+        local relpath=$(file.get_relative_path "${ETC_DIR}" "${SERVICE_ROOT_DIR}/etc/solr")
+        ln -s "${relpath}"
+        popd > /dev/null
+    fi
+
+    # Now install our logging facility.
+    sed "s!\${SOLR_LOGS}!${SOLR_LOGS}!g" "${ETC_DIR}/solr/logging.properties" > "${SOLR_HOME}/${SOLR_LOGS_PROPERTIES_FILE}"
 }
 
 
