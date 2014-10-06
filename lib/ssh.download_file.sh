@@ -14,7 +14,7 @@ function ssh.download_file () {
     local remote_hash
 
     if [ -f "${local_file}.hash" ]; then
-        remote_hash=$(ssh -o "LogLevel ERROR" -p ${port} "${host}" "md5sum ${remote_file}")
+        remote_hash=$(ssh -o "LogLevel ERROR" -p ${port} "${user}@${host}" "md5sum ${remote_file}")
         remote_hash=$(cut -d' ' -f1 <<< "$remote_hash")
         local_hash=$(cat "${local_file}.hash")
         if [ "$local_hash" != "$remote_hash" ]; then
@@ -24,7 +24,7 @@ function ssh.download_file () {
 
     if [ ! -f "${local_file}.hash" ]; then
         echo  # Put the prompt into a new line.
-        scp -o "LogLevel ERROR" -P ${port} "${host}:${remote_file}" "${local_file}"
+        scp -o "LogLevel ERROR" -P ${port} "${user}@${host}:${remote_file}" "${local_file}"
         local local_hash=$(md5sum "${local_file}")
         local_hash=$(cut -d' ' -f1 <<< "$local_hash")
         echo "$local_hash" > "${local_file}.hash"
