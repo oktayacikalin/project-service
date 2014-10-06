@@ -5,6 +5,7 @@
 # @license   MIT (LICENSE.txt)
 
 function service.get_log_dir () (
-    source "$1" NOOP
+    local COMMAND="NOOP"
+    source "$1"
     [ "$SERVICE_LOG_DIR" ] && echo "$SERVICE_LOG_DIR"
 )
