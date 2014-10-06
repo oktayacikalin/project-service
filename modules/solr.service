@@ -52,11 +52,12 @@ function install_package () {
     pushd "${SOLR_HOME}/solr" > /dev/null
     if [ "${SOLR_LINK_MODE}" == "symlink" ]; then
         rm -rf conf
-        if ! ln -s "${SOLR_LINK_CONF_PATH}" .; then
+        if ! ln -s "${SOLR_LINK_CONF_PATH}" "conf"; then
             echo "ERROR: Could not link to given solr configuration dir."
             exit 1
         fi
     elif [ "${SOLR_LINK_MODE}" == "copy" ]; then
+        mkdir -p conf
         if ! cp -a "${SOLR_LINK_CONF_PATH}"/* conf/; then
             echo "ERROR: Could not copy given solr configuration dir."
             exit 1
