@@ -42,6 +42,7 @@ function magento.gen_config_sql_statements () {
         # Reset environment
         "delete from core_config_data where path = 'environment';"
         "insert into core_config_data (scope, scope_id, path, value) values ('default', 0, 'environment', concat('unknown | unknown | ', now()));"
+        $(update_config "dev/restrict/allow_ips" "")
 
         # Reset indexer status
         "UPDATE index_process SET status='pending';"
