@@ -31,9 +31,7 @@ import "lib/magento.gen_config_sql_statements"
 import "etc/default/mysql"
 import "etc/default/magento"
 import "etc/default/magento-project"
-if [ "${MP_SOLR_MANAGE}" = "1" ]; then
-    import "etc/default/solr"
-fi
+
 
 assert.defined MAGENTO_HOME "Please configure the magento.service first!"
 
