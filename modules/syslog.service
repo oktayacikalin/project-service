@@ -20,10 +20,6 @@ function main () {
         'NOOP')
             # NOOP
         ;;
-
-        *)
-            exit 99
-        ;;
     esac
 }
 

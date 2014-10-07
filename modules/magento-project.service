@@ -258,16 +258,8 @@ function main () {
             "${SERVICE_DIR}/magento.service" clear-cache
         ;;
 
-        # 'chain-test')
-        #     echo ROOT
-        # ;;
-
         'NOOP')
             # NOOP
-        ;;
-
-        *)
-            exit 99
         ;;
     esac
 }
