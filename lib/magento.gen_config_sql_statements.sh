@@ -55,7 +55,7 @@ function magento.gen_config_sql_statements () {
         ##
 
         # Don't try to send emails via smtp
-        $(update_config "system/smtp/disable" 1)
+        $(update_config "system/smtp/disable" 0)
         $(update_config "system/smtp/host" "localhost")
         $(update_config "system/smtp/port" 25)
         $(update_config "advancedsmtp/settings/enabled" 0)
