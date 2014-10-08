@@ -48,7 +48,7 @@ mkdir -p "${CACHE_DIR}" "${SPLITTED_DIR}"
 function find_splitted_dump_files () {
     # TODO First take header, then structures, then datas and finally the footer.
     #      Don't rely on "ls -rtl" alone here!
-    local files=$(ls -rt *.sql.gz)
+    local files="$(ls -rt *.sql.gz)"
     echo "${files}"
 }
 
@@ -186,11 +186,20 @@ function main () {
 
         'import-splitted-db-dump')
             local splitted_dir=$(readlink -f ${2:-${SPLITTED_DIR}})
+            if [ ! -d "${splitted_dir}" ]; then
+                log.error "Import failed. Dir not found: ${splitted_dir}"
+                exit 1
+            fi
+            pushd "${splitted_dir}" > /dev/null
+            local dump_files="$(find_splitted_dump_files)"
+            if [ -z "${dump_files[@]}" ]; then
+                log.error "Import failed. No file found in: ${splitted_dir}"
+                exit 1
+            fi
             mysql.drop_database $(magento.get_db_connection_params default)
             mysql.create_database $(magento.get_db_connection_params default)
-            pushd "${splitted_dir}" > /dev/null
             echo  # Put the prompt into a new line.
-            import_dump_files $(find_splitted_dump_files)
+            import_dump_files ${dump_files[@]}
             popd > /dev/null
         ;;
 
@@ -231,7 +240,7 @@ function main () {
             # - Magento's local.xml has been configured correctly.
             # - All services are running.
             # - The dump has been downloaded.
-            # - The dump has been splitted and stripped.
+            # - The dump has been splitted (and stripped if necessary).
 
             echo  # Put the prompt into a new line.
             echo "Importing splitted dump..."
