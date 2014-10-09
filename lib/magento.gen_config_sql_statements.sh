@@ -16,7 +16,7 @@ function magento.gen_config_sql_statements () {
         ##
 
         # Replace all email addresses
-        "UPDATE core_config_data SET value=CONCAT(SUBSTRING_INDEX(value,'@',1),'@${BASE_DOMAIN}') WHERE value REGEXP '[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}'"
+        "UPDATE core_config_data SET value=CONCAT(SUBSTRING_INDEX(value,'@',1),'@${BASE_DOMAIN}') WHERE value REGEXP '[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}';"
 
         # Replace URLs
         $(update_config "web/unsecure/base_url" "http://${BASE_DOMAIN}/" default)
@@ -40,8 +40,8 @@ function magento.gen_config_sql_statements () {
         $(update_config "dev/log/exception_file" "exception.log")
 
         # Reset environment
-        "delete from core_config_data where path = 'environment';"
-        "insert into core_config_data (scope, scope_id, path, value) values ('default', 0, 'environment', concat('unknown | unknown | ', now()));"
+        "DELETE FROM core_config_data WHERE path='environment';"
+        "INSERT INTO core_config_data (scope, scope_id, path, value) VALUES ('default', 0, 'environment', concat('unknown | unknown | ', NOW()));"
         $(update_config "dev/restrict/allow_ips" "")
 
         # Reset indexer status
