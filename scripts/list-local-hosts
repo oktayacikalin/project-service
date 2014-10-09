@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Utility for scanning the local port range and returning hostnames found.
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+#
+
+
+function main () {
+    local i
+    local ip
+    local hostname
+    for (( i=1; i<=255; i++)); do
+        ip="127.0.0.$i"
+        echo -ne "$ip..."
+        hostname=($(host ${ip}))
+        hostname=${hostname[-1]}
+        hostname=${hostname%.}
+        echo -ne "\r"
+        if [[ "$hostname" != *NXDOMAIN* ]]; then
+            echo $ip $hostname
+        fi
+    done
+    echo -n
+}
+
+
+main
