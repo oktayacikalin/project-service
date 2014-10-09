@@ -68,10 +68,13 @@ function import_dump_files () {
     local files=("${prefix[@]}" "$@")
     for file in "${files[@]}"; do
         local name=$(get_label_of_filename "${file}")
-        pv -N "${name}" "${file}" | gunzip | \
-            sed 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/g' | \
-            sed 's/ENGINE=InnoDB/ENGINE=InndoDB ROW_FORMAT=COMPRESSED/g'
-    done | mysql.shell_cmd $(magento.get_db_connection_params default)
+        pv --name "${name}" "${file}" \
+            | gunzip \
+            | sed 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/g' \
+            | sed 's/ENGINE=InnoDB/ENGINE=InndoDB ROW_FORMAT=COMPRESSED/g'
+        echo "SELECT '${file}';"
+    done | mysql.shell_cmd $(magento.get_db_connection_params default) -N \
+        | pv --size ${#files[@]} --line-mode --progress --timer --interval 5 > /dev/null
 }
 
 
@@ -207,7 +210,9 @@ function main () {
             local dump_file=$(readlink -f ${2:-${DUMP_FILE}})
             bytes=$(mysql.get_database_size $(magento.get_db_connection_params default))
             echo  # Put the prompt into a new line.
-            mysql.dump_database $(magento.get_db_connection_params default) | pv --size=$bytes --name="Creating database dump" | gzip > "${dump_file}"
+            mysql.dump_database $(magento.get_db_connection_params default) \
+                | pv --size=$bytes --name="Creating database dump" \
+                | gzip > "${dump_file}"
         ;;
 
         'anonymize-db')
