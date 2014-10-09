@@ -46,9 +46,14 @@ mkdir -p "${CACHE_DIR}" "${SPLITTED_DIR}"
 
 
 function find_splitted_dump_files () {
-    # TODO First take header, then structures, then datas and finally the footer.
-    #      Don't rely on "ls -rtl" alone here!
     local files="$(ls -rt *.sql.gz)"
+    files=(
+        $(grep -e '^header' <<< "${files}")
+        $(grep -e '.structure.sql.gz$' <<< "${files}" | grep -v -e '^header' -e '^footer')
+        $(grep -e '.data.sql.gz$' <<< "${files}" | grep -v -e '^header' -e '^footer')
+        $(grep -e '^footer' <<< "${files}")
+    )
+    files="${files[@]}"
     echo "${files}"
 }
 
