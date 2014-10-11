@@ -12,6 +12,7 @@
 import "lib/service.run_main"
 import "lib/var.default"
 import "lib/proc.wait_for_pid_in_file"
+import "lib/assert.is_dir"
 
 import "etc/default/mysql"
 
@@ -21,6 +22,10 @@ mkdir -p "$(dirname ${MYSQL_SOCKET})"
 mkdir -p "${MYSQL_DATA_DIR}"
 mkdir -p "$(dirname ${MYSQL_ERROR_LOG})"
 mkdir -p "${MYSQL_BACKUP_DIR}"
+
+
+assert.is_dir "${ETC_DIR}/mysql" "Missing configuration in: ${ETC_DIR}/mysql"
+
 
 function fill () {
     local template=$1

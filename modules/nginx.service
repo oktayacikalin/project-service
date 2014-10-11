@@ -11,6 +11,7 @@
 
 import "lib/service.run_main"
 import "lib/var.default"
+import "lib/assert.is_dir"
 
 import "etc/default/nginx"
 
@@ -20,6 +21,9 @@ SERVICE_LOG_DIR="${LOG_DIR}/nginx"
 
 mkdir -p "${LIB_DIR}/nginx" "${LOG_DIR}/nginx"
 mkdir -p "${CACHE_DIR}/nginx"
+
+
+assert.is_dir "${ETC_DIR}/nginx" "Missing configuration in: ${ETC_DIR}/nginx"
 
 
 function main () {

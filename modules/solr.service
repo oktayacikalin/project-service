@@ -12,6 +12,7 @@
 import "lib/service.run_main"
 import "lib/var.default"
 import "lib/file.get_relative_path"
+import "lib/assert.is_dir"
 
 import "etc/default/solr"
 
@@ -27,6 +28,9 @@ SERVICE_LOG_DIR="$SOLR_LOGS"
 CACHE_DIR="${CACHE_DIR}/solr"
 
 mkdir -p "${SOLR_HOME}" "${SOLR_PID}" "${SOLR_LOGS}" "${CACHE_DIR}"
+
+
+assert.is_dir "${ETC_DIR}/solr" "Missing configuration in: ${ETC_DIR}/solr"
 
 
 function download_package () {

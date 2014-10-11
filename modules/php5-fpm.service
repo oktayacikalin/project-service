@@ -11,12 +11,16 @@
 
 import "lib/service.run_main"
 import "lib/var.default"
+import "lib/assert.is_dir"
 
 import "etc/default/php5-fpm"
 
 TIMEOUT=30
 
 SERVICE_LOG_FILE="${LOG_DIR}/php5-fpm.log"
+
+
+assert.is_dir "${ETC_DIR}/php5" "Missing configuration in: ${ETC_DIR}/php5"
 
 
 function main () {
