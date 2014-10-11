@@ -1,4 +1,4 @@
-# Function which waits until the PID in the given file shows up.
+# Function which waits until the PID in the given file and process shows up.
 #
 # @author    Oktay Acikalin <oktay.acikalin@gmail.com>
 # @copyright Oktay Acikalin
@@ -6,15 +6,24 @@
 
 function proc.wait_for_pid_in_file () {
     local pid_file="$1"
+    local timeout="${2:-30}"
+    local i
+    for (( i=0; i < ${timeout}; i++ )); do
+        if [ ! -f "${pid_file}" ]; then
+            sleep 1
+            echo -n "."
+        fi
+    done
+
     if [ ! -f "${pid_file}" ]; then
         echo "ERROR: Pid file does not exist: ${pid_file}"
         exit 1
     fi
 
     local pid=$(cat ${pid_file})
-
-    while true; do
-        local proc=$(ps xaww | grep -v grep | grep mysqld | grep ${pid})
+    local proc
+    for (( i=0; i < ${timeout}; i++ )); do
+        proc=$(ps -x -o pid | grep "${pid}")
         if [ -n "$proc" ]; then
             break
         fi
