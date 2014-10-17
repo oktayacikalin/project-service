@@ -157,10 +157,6 @@ function main () {
             # TODO flush solr cache instead of restart.
             $0 restart
         ;;
-
-        'NOOP')
-            # NOOP
-        ;;
     esac
 }
 

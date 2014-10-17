@@ -78,7 +78,8 @@ function import_dump_files () {
             | sed 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/g' \
             | sed 's/ENGINE=InnoDB/ENGINE=InndoDB ROW_FORMAT=COMPRESSED/g'
         echo "SELECT '${file}';"
-    done | mysql.shell_cmd $(magento.get_db_connection_params default) -N \
+    done \
+        | mysql.shell_cmd $(magento.get_db_connection_params default) -N \
         | pv --size ${#files[@]} --line-mode --progress --timer --interval 5 > /dev/null
 }
 
@@ -118,7 +119,8 @@ function main () {
             fi
 
             ssh.download_file "${MP_REMOTE_USER}" "${MP_REMOTE_HOST}" "${MP_REMOTE_PORT}" \
-                              "${latest}" "${DUMP_FILE}" || exit $?
+                              "${latest}" "${DUMP_FILE}" \
+                              || exit $?
             basename "${latest}" > "${DUMP_FILE_FILENAME_FILE}"
         ;;
 
