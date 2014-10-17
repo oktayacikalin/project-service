@@ -18,7 +18,7 @@ function ssh.download_file () {
         remote_hash=$(cut -d' ' -f1 <<< "$remote_hash")
         local_hash=$(cat "${local_file}.hash")
         if [ "$local_hash" != "$remote_hash" ]; then
-            rm "${local_file}" "${local_file}.hash"
+            rm -f "${local_file}" "${local_file}.hash"
         fi
     fi
 
