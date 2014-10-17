@@ -13,6 +13,9 @@ import "lib/service.run_main"
 import "lib/var.default"
 import "lib/proc.wait_for_pid_in_file"
 import "lib/assert.is_dir"
+import "lib/mysql.get_table_timestamp"
+import "lib/mysql.get_table_list"
+import "lib/file.get_relative_path"
 
 import "etc/default/mysql"
 
@@ -95,6 +98,7 @@ function set_innodb_table_row_format () {
 #     _alter_tables "PAGE_COMPRESSED=0"
 # }
 
+
 function mysql.list_tables_like () {
     local database="$1"
     local pattern="$2"
@@ -126,7 +130,6 @@ function main () {
         'install')
             mysql_install_db --defaults-file="${MYSQL_CONF}"
             $0 start
-            proc.wait_for_pid_in_file "${MYSQL_PID}"
             mysqladmin --defaults-file="${MYSQL_CONF}" -u "${MYSQL_USER}" password "${MYSQL_PASS}"
             # mysqladmin --defaults-file="${MYSQL_CONF}" -h localhost -u "${MYSQL_USER}" password "${MYSQL_PASS}"
         ;;
@@ -142,6 +145,7 @@ function main () {
                 || exit 97
             start-stop-daemon --start --pidfile "$MYSQL_PID" --chdir "$BASE_DIR" --background --exec /usr/sbin/mysqld \
                 -- --defaults-file="${MYSQL_CONF}"
+            proc.wait_for_pid_in_file "${MYSQL_PID}"
         ;;
 
         'stop')
@@ -223,73 +227,204 @@ function main () {
         # ;;
 
         'backup')
-            requested_database="$2"
-            requested_tables=("${@:3}")
-            databases=($(echo "show databases;" | mysql ${MYSQL_CONNECTION_PARAMS} -B -N | grep -v -E '^(information_schema|mysql|performance_schema)$'))
-            for database in "${databases[@]}"; do
-                if [ -n "${requested_database}" ] && [ "${database}" != "${requested_database}" ]; then
-                    continue
+            # TODO backup should only hold n backups (defaults to 5).
+            local requested="${@:2}"
+            local cur_timestamp="$(date '+%s')"
+
+            echo  # Put the prompt into a new line.
+
+            # If no databases have been requested, take them all.
+            if [ -z "${requested[@]}" ]; then
+                requested=($(echo "show databases;" | mysql ${MYSQL_CONNECTION_PARAMS} -B -N | grep -v -E '^(information_schema|mysql|performance_schema)$'))
+            fi
+
+            for request in "${requested[@]}"; do
+                request=(${request//:/ })
+                # TODO Make use of mysql.list_tables_like here.
+                tables=(${request[1]//,/ })
+                local database="${request[0]}"
+                local backup_dir="${MYSQL_BACKUP_DIR}/${database}/${cur_timestamp}"
+                local previous_backup_dir="$(find ${MYSQL_BACKUP_DIR}/${database}/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort | tail -n1)"
+
+                # If no tables have been requested, take them all.
+                if [ ${#tables} = 0 ]; then
+                    tables=($(mysql.get_table_list "${MYSQL_CONNECTION_PARAMS}" "${database}"))
                 fi
-                echo -n "${database}... "
-                backup_dir="${MYSQL_BACKUP_DIR}/${database}"
-                if [ -z "${requested_tables}" ]; then
-                    rm -rf "${backup_dir}"
+
+                if [ -z "${previous_backup_dir}" ]; then
+                    echo "No previous backup for ${database} found."
                 fi
-                mkdir -p "${backup_dir}"
-                tables=()
-                if [ -n "${requested_tables}" ]; then
-                    for pattern in "${requested_tables[@]}"; do
-                        tables+=$(mysql.list_tables_like "${database}" "${pattern}")
-                    done
-                    if [ -z "${tables[@]}" ]; then
-                        echo "WARNING: None of the requested tables could be found. Avoiding complete dump!"
-                        continue
+
+                # Analyze situation.
+                local changed_tables=()
+                local unchanged_tables=()
+                local changelog=()
+                local table
+                local timestamp
+                local old_timestamp=${previous_backup_dir##*/}
+                changelog+=("table,timestamp_before,timestamp_now")
+
+                for table in "${tables[@]}"; do
+                    timestamp=$(mysql.get_table_timestamp "${MYSQL_CONNECTION_PARAMS}" "${database}" "${table}")
+                    # Find table in older backup (if it exists).
+                    if [ -n "${previous_backup_dir}" ] && [ -e "${previous_backup_dir}/${table}.sql.gz" ]; then
+                        if [[ ${timestamp} > ${old_timestamp} ]]; then
+                            changed_tables+=("${table}")
+                            changelog+=("${table},${old_timestamp},${timestamp}")
+                        else
+                            unchanged_tables+=("${table}")
+                        fi
+                    else
+                        changed_tables+=("${table}")
+                        changelog+=("${table},0,${timestamp}")
                     fi
+                    echo
+                done > >(pv --name "Analyzing ${database}" --size ${#tables[@]} --line-mode --timer --eta --progress --cursor > /dev/null)
+                echo
+
+                # Do we have any changes?
+                if [ ${#changed_tables} != 0 ]; then
+                    mkdir -p "${backup_dir}"
+
+                    for record in "${changelog[@]}"; do
+                        echo "${record}" >> "${backup_dir}/changelog.csv"
+                    done
+
+                    echo "Status: ${#changed_tables[@]} added/changed, ${#unchanged_tables[@]} unchanged"
+
+                    # First link all unchanged_tables.
+                    if [ ${#unchanged_tables} != 0 ]; then
+                        pushd "${backup_dir}" > /dev/null
+                        for table in "${unchanged_tables[@]}"; do
+                            echo "${table} "
+                            ln ../${previous_backup_dir##*/}/${table}.* .
+                        done | pv --name "Linking tables" --size ${#unchanged_tables[@]} --line-mode --timer --eta --progress --cursor > /dev/null
+                        popd > /dev/null
+                    fi
+
+                    # Now dump all changed_tables.
+                    for table in "${changed_tables[@]}"; do
+                        mysqldump ${MYSQL_CONNECTION_PARAMS} -T "${backup_dir}" "${database}" "${table}"
+                        echo "${table}: Backed up"
+                        gzip "${backup_dir}/${table}."*
+                        echo "${table}: Compressed files"
+                    done | pv --name "Backing up tables" --size $((${#changed_tables[@]} * 2)) --line-mode --timer --eta --progress --cursor > /dev/null
+                else
+                    echo "Nothing changed."
                 fi
-                mysqldump ${MYSQL_CONNECTION_PARAMS} -T "${backup_dir}" "${database}" ${tables[@]}
             done
         ;;
 
         'restore')
-            # https://mariadb.com/kb/en/mariadb/documentation/optimization-and-tuning/query-optimizations/how-to-quickly-insert-data-into-mariadb/
-            requested_database="$2"
-            # requested_tables=("${@:3}")
-            prepare_sql_file="${SERVICE_ROOT_DIR}/scripts/mysql-import-optimizations.sql"
-            databases=($(ls "${MYSQL_BACKUP_DIR}"))
-            for database in "${databases[@]}"; do
-                if [ -n "${requested_database}" ] && [ "${database}" != "${requested_database}" ]; then
-                    continue
+            # TODO Give option to choose timestamp for full restore.
+            # TODO Make sure that the database exists, and if not do a full restore.
+            local requested="${@:2}"
+            local cur_timestamp="$(date '+%s')"
+            local prepare_sql_file="${SERVICE_ROOT_DIR}/scripts/mysql-import-optimizations.sql"
+
+            echo  # Put the prompt into a new line.
+
+            # If no databases have been requested, take them all.
+            if [ -z "${requested[@]}" ]; then
+                requested=($(echo "show databases;" | mysql ${MYSQL_CONNECTION_PARAMS} -B -N | grep -v -E '^(information_schema|mysql|performance_schema)$'))
+            fi
+
+            for request in "${requested[@]}"; do
+                request=(${request//:/ })
+                # TODO Make use of mysql.list_tables_like here.
+                tables=(${request[1]//,/ })
+                local database="${request[0]}"
+                # local backup_dir="${MYSQL_BACKUP_DIR}/${database}/${cur_timestamp}"
+                local previous_backup_dir="$(find ${MYSQL_BACKUP_DIR}/${database}/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort | tail -n1)"
+
+                # If no tables have been requested, take them all.
+                if [ ${#tables} = 0 ]; then
+                    tables=($(mysql.get_table_list "${MYSQL_CONNECTION_PARAMS}" "${database}"))
                 fi
-                echo  # Put the prompt into a new line.
-                echo "Restoring database ${database}... "
-                backup_dir="${MYSQL_BACKUP_DIR}/${database}"
-                sql_files=($(ls -rt "${backup_dir}"/*.sql))
-                data_files=($(ls -rt "${backup_dir}"/*.txt))
-                # TODO should only not recreate when giving a table pattern...
-                if [ -z "${requested_database}" ]; then
-                    mysqladmin ${MYSQL_CONNECTION_PARAMS} -f drop "${database}" > /dev/null
-                    mysqladmin ${MYSQL_CONNECTION_PARAMS} create "${database}"
+
+                if [ -z "${previous_backup_dir}" ]; then
+                    echo "No previous backup for ${database} found."
+                    exit 1
                 fi
-                echo -n "Creating tables... "
-                {
-                    cat "${prepare_sql_file}"
-                    for file in "${sql_files[@]}"; do
-                        cat "${file}"
-                        echo -n "." >&2
-                    done
-                } | mysql ${MYSQL_CONNECTION_PARAMS} "${database}"
-                echo  # Put the prompt into a new line.
-                echo "Importing data... "
-                for file in "${data_files[@]}"; do
-                    table_name=$(basename "${file}")
-                    table_name=${table_name%%.*}
-                    {
-                        cat "${prepare_sql_file}"
-                        echo "LOAD DATA INFILE '${file}' INTO TABLE ${table_name} CHARACTER SET UTF8;"
-                    } | mysql ${MYSQL_CONNECTION_PARAMS} "${database}"
+
+                # Analyze situation.
+                local changed_tables=()
+                local unchanged_tables=()
+                # local changelog=()
+                local table
+                local timestamp
+                local old_timestamp=${previous_backup_dir##*/}
+                # changelog+=("table,timestamp_before,timestamp_now")
+
+                for table in "${tables[@]}"; do
+                    timestamp=$(mysql.get_table_timestamp "${MYSQL_CONNECTION_PARAMS}" "${database}" "${table}")
+                    # Find table in older backup (if it exists).
+                    if [ -n "${previous_backup_dir}" ] && [ -e "${previous_backup_dir}/${table}.sql.gz" ]; then
+                        if [[ ${timestamp} > ${old_timestamp} ]]; then
+                            changed_tables+=("${table}")
+                            # changelog+=("${table},${old_timestamp},${timestamp}")
+                        else
+                            unchanged_tables+=("${table}")
+                        fi
+                    else
+                        changed_tables+=("${table}")
+                        # changelog+=("${table},0,${timestamp}")
+                    fi
                     echo
-                done | pv -l -s ${#data_files[@]} > /dev/null
+                done > >(pv --name "Analyzing ${database}" --size ${#tables[@]} --line-mode --timer --eta --progress --cursor > /dev/null)
+                echo
+
+                # Do we have any changes?
+                if [ ${#changed_tables} != 0 ]; then
+                    echo "Status: ${#changed_tables[@]} added/changed, ${#unchanged_tables[@]} unchanged"
+
+                    # Now restore all changed_tables.
+                    local file
+                    local fifo
+                    pushd "${MYSQL_DATA_DIR}" > /dev/null
+                    for table in "${changed_tables[@]}"; do
+                        sql_file="${previous_backup_dir}/${table}.sql.gz"
+                        sql_file="$(file.get_relative_path "${MYSQL_DATA_DIR}" "${sql_file}")"
+                        data_file="${previous_backup_dir}/${table}.txt.gz"
+                        data_file="$(file.get_relative_path "${MYSQL_DATA_DIR}" "${data_file}")"
+                        # http://dev.mysql.com/doc/refman/5.0/en/load-data.html
+                        fifo="${table}.txt"
+                        rm -f "${fifo}"
+                        mkfifo "${fifo}"
+                        {
+                            cat "${prepare_sql_file}"
+                            zcat "${sql_file}"
+                            echo "SELECT '${table}: Restored structure';"
+
+                            gunzip -c "${data_file}" > "${fifo}" &
+                            # This is non-blocking, therefore we remove the fifo later on.
+                            echo "LOAD DATA INFILE './${fifo}' INTO TABLE ${table} CHARACTER SET UTF8;"
+                            echo "SELECT '${table}: Restored data';"
+
+                            echo "FLUSH TABLES ${table} WITH READ LOCK;"
+                            echo "SELECT '${table}: Flushed to disk';"
+                        } \
+                            | mysql ${MYSQL_CONNECTION_PARAMS} "${database}" -N
+                        # Finally remove the fifo after the database is really done.
+                        rm "${fifo}"
+                        # Restore timestamps for all table files to the lastest of the backup.
+                        local stamp=$(date --date="@${old_timestamp}" +"%Y%m%d%H%M.%S")
+                        ( sleep 1; touch -t "${stamp}" "${database}/${table}."* ) &
+                    done \
+                        | pv --name "Restoring tables" --size $((${#changed_tables[@]} * 3)) --line-mode --timer --eta --progress --cursor > /dev/null
+                    popd > /dev/null
+                else
+                    echo "Nothing changed."
+                fi
             done
+        ;;
+
+        'diff')
+            # TODO find changes, dump changed tables into tmp dir, diff the files to the previous dump.
+        ;;
+
+        'watch')
+            watch -n1 "mysql ${MYSQL_CONNECTION_PARAMS} information_schema --skip-column-names --execute 'SELECT DB, STATE, TIME, PROGRESS, INFO FROM PROCESSLIST WHERE DB != \"information_schema\";'"
         ;;
 
         'NOOP')

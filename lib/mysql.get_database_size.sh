@@ -8,7 +8,7 @@ function mysql.get_database_size () {
     local connection_params=$1
     local name=$2
     # FIXME: Estimated size is slightly too small (about 10%).
-    sql="
+    local sql="
     SELECT SUM(data_length + index_length)
     FROM information_schema.TABLES
     WHERE table_schema='${name}' GROUP BY table_schema;

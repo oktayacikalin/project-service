@@ -7,5 +7,5 @@
 
 function mysql.shell_cmd () {
     local connection_params=$1
-    mysql ${connection_params} ${@:2}
+    mysql ${connection_params} "${@:2}"
 }
