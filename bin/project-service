@@ -12,6 +12,7 @@ source "${SERVICE_DIR}/service.conf"
 import "lib/service.get_log_dir"
 import "lib/service.get_log_file"
 import "lib/service.get_commands"
+import "lib/service.colorize_command"
 import "lib/array.unique"
 import "lib/array.contains"
 import "lib/array.index"
@@ -21,6 +22,7 @@ ALL_SERVICES=$(find "${SERVICE_ROOT_DIR}/" -name "*.service")
 
 # TODO Implement ACTIVE_SERVICES services by filtering them from ALL_SERVICES.
 ACTIVE_SERVICES=$(find "${SERVICE_DIR}/" -name "*.service")
+
 
 function handle_command () {
     local command=${!1}
@@ -119,22 +121,9 @@ function handle_command () {
                 commands+=(help)
                 if [ "$commands" ]; then
                     name=${service##*/}
-                    echo -en "\e[33m${name%.*}\e[2m:\e[22m\e[39m "
+                    echo -en "${AC_FG_YELLOW}${name%.*}${AC_DIM}:${AC_RESET_DIM}${AC_FG_DEFAULT} "
                     for command in "${commands[@]}"; do
-                        if [[ "${command}" =~ "start" ]] || [[ "${command}" =~ "restart" ]] || [[ "${command}" =~ "reload" ]] || [[ "${command}" =~ "stop" ]]; then
-                            echo -ne "\e[32m"
-                        elif [[ "${command}" =~ "init-script" ]]; then
-                            echo -ne "\e[34m"
-                        elif [[ "${command}" =~ "install" ]]; then
-                            echo -ne "\e[31m"
-                        elif [[ "${command}" =~ "shell" ]]; then
-                            echo -ne "\e[35m"
-                        elif [[ "${command}" =~ "cache" ]]; then
-                            echo -ne "\e[36m"
-                        elif [[ "${command}" =~ "tail" ]] || [[ "${command}" =~ "help" ]]; then
-                            echo -ne "\e[2m"
-                        fi
-                        echo -ne "${command}\e[0m "
+                        echo -ne "$(service.colorize_command "${command}") "
                     done
                     echo
                 fi
@@ -146,16 +135,16 @@ function handle_command () {
                 local commands=$(service.get_commands $service)
                 if array.contains "$command" "${commands[@]}"; then
                     local name=${service##*/}
-                    echo -ne "Executing $command on \e[33m${name%.*}\e[39m: "
+                    echo -ne "$(service.colorize_command "${command}") ${AC_DIM}on${AC_RESET_DIM} ${AC_FG_YELLOW}${name%.*}${AC_FG_DEFAULT}: "
                     if "$service" "$command" "${params[@]}"; then
-                        echo -e "\e[32mOK\e[39m"
+                        echo -e "${AC_FG_GREEN}OK${AC_FG_DEFAULT}"
                     else
                         local err=$?
                         case "$err" in
-                            97) echo -e "\e[2mOK / NOOP\e[22m";;  # already started
-                            98) echo -e "\e[2mOK / NOOP\e[22m";;  # already stopped
-                            99) echo -e "\e[2mN/A\e[22m";;
-                            *) echo -e "\e[31mFAILED\e[39m";;
+                            97) echo -e "${AC_DIM}OK / NOOP${AC_RESET_DIM}";;  # already started
+                            98) echo -e "${AC_DIM}OK / NOOP${AC_RESET_DIM}";;  # already stopped
+                            99) echo -e "${AC_DIM}N/A${AC_RESET_DIM}";;
+                            *) echo -e "${AC_FG_RED}FAILED${AC_FG_DEFAULT}";;
                         esac
                     fi
                 fi
@@ -163,6 +152,7 @@ function handle_command () {
         ;;
     esac
 }
+
 
 mkdir -p "${VAR_DIR}" "${LOG_DIR}" "${PID_DIR}"
 
@@ -176,9 +166,9 @@ else
 fi
 
 for action in ${actions[@]}; do
-    action=($(tr ':' ' ' <<< ${action}))
-    commands=($(tr ',' ' ' <<< ${action[0]}))
-    services=($(tr ',' ' ' <<< ${action[1]}))
+    action=(${action//:/ })
+    commands=(${action[0]//,/ })
+    services=(${action[1]//,/ })
     for command in ${commands[@]}; do
         handle_command command params[@] services[@]
     done

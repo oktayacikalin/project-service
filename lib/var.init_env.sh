@@ -20,4 +20,29 @@ if [ -z "${IMPORT_PATH}" ]; then
     source "${SERVICE_ROOT_DIR}/lib/log.sh"
 
     COMMAND="$1"
+
+    # ASCII colors
+    AC_FG_BLACK="\e[30m"
+    AC_FG_RED="\e[31m"
+    AC_FG_GREEN="\e[32m"
+    AC_FG_YELLOW="\e[33m"
+    AC_FG_BLUE="\e[34m"
+    AC_FG_MAGENTA="\e[35m"
+    AC_FG_CYAN="\e[36m"
+    AC_FG_WHITE="\e[37m"
+    AC_FG_DEFAULT="\e[39m"
+
+    AC_BG_BLACK="\e[40m"
+    AC_BG_RED="\e[41m"
+    AC_BG_GREEN="\e[42m"
+    AC_BG_YELLOW="\e[44m"
+    AC_BG_BLUE="\e[44m"
+    AC_BG_MAGENTA="\e[45m"
+    AC_BG_CYAN="\e[46m"
+    AC_BG_WHITE="\e[47m"
+
+    AC_DIM="\e[2m"
+
+    AC_RESET="\e[0m"
+    AC_RESET_DIM="\e[22m"
 fi
