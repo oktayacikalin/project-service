@@ -27,6 +27,7 @@ import "lib/magento.get_db_connection_params"
 import "lib/magento.get_eav_attribute_id"
 import "lib/magento.gen_anon_sql_statements"
 import "lib/magento.gen_config_sql_statements"
+import "lib/gzip.get_uncompressed_size"
 
 import "etc/default/mysql"
 import "etc/default/magento"
@@ -67,20 +68,19 @@ function get_label_of_filename () {
 
 
 function import_dump_files () {
-    local filename="${CACHE_DIR}"/$(basename "${MYSQL_OPTIMIZATION_SQL_FILE}").gz
-    gzip -c "${MYSQL_OPTIMIZATION_SQL_FILE}" > "${filename}"
-    local prefix=("${filename}")
-    local files=("${prefix[@]}" "$@")
-    for file in "${files[@]}"; do
-        local name=$(get_label_of_filename "${file}")
-        pv --name "${name}" "${file}" \
-            | gunzip \
-            | sed 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/g' \
-            | sed 's/ENGINE=InnoDB/ENGINE=InndoDB ROW_FORMAT=COMPRESSED/g'
-        echo "SELECT '${file}';"
-    done \
-        | mysql.shell_cmd $(magento.get_db_connection_params default) -N \
-        | pv --size ${#files[@]} --line-mode --progress --timer --interval 5 > /dev/null
+    local size=$(gzip.get_uncompressed_size $@)
+    {
+        cat "${MYSQL_OPTIMIZATION_SQL_FILE}"
+        for file in "$@"; do
+            local name=$(get_label_of_filename "${file}")
+            pv --name "${name}" "${file}" --interval 2 \
+                | gunzip \
+                | sed 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/g' \
+                | sed 's/ENGINE=InnoDB/ENGINE=InndoDB ROW_FORMAT=COMPRESSED/g'
+        done \
+            | pv --name "Overall" --size ${size} --interval 5
+    } \
+        | mysql.shell_cmd $(magento.get_db_connection_params default) -N
 }
 
 

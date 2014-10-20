@@ -16,6 +16,7 @@ import "lib/assert.is_dir"
 import "lib/mysql.get_table_timestamp"
 import "lib/mysql.get_table_list"
 import "lib/file.get_relative_path"
+import "lib/gzip.get_uncompressed_size"
 
 import "etc/default/mysql"
 
@@ -376,42 +377,85 @@ function main () {
 
                 # Do we have any changes?
                 if [ ${#changed_tables} != 0 ]; then
-                    echo "Status: ${#changed_tables[@]} added/changed, ${#unchanged_tables[@]} unchanged"
+                    # Compute size of uncompressed data to skip.
+                    local files=()
+                    for table in "${unchanged_tables[@]}"; do
+                        files+=("${previous_backup_dir}/${table}.sql.gz")
+                        files+=("${previous_backup_dir}/${table}.txt.gz")
+                    done
+                    local unchanged_bytes=$(gzip.get_uncompressed_size ${files[@]})
+                    local unchanged_size=$(numfmt --to=si --suffix=B --format="%3f" ${unchanged_bytes})
+                    unset files
+
+                    # Compute size of uncompressed data to process.
+                    local files=()
+                    for table in "${changed_tables[@]}"; do
+                        files+=("${previous_backup_dir}/${table}.sql.gz")
+                        files+=("${previous_backup_dir}/${table}.txt.gz")
+                    done
+                    local changed_bytes=$(gzip.get_uncompressed_size ${files[@]})
+                    local changed_size=$(numfmt --to=si --suffix=B --format="%3f" ${changed_bytes})
+                    unset files
+
+                    echo "Status: ${#changed_tables[@]} added/changed (${changed_size}), ${#unchanged_tables[@]} unchanged (${unchanged_size})"
+
+                    # TODO Ask user whether we should continue or not.
 
                     # Now restore all changed_tables.
-                    local file
-                    local fifo
+                    local table_fifo
+                    local global_fifo
+                    local sql_file
+                    local data_file
                     pushd "${MYSQL_DATA_DIR}" > /dev/null
+                    # TODO perhaps make use of coproc or something for executing the imports in parallel.
                     for table in "${changed_tables[@]}"; do
                         sql_file="${previous_backup_dir}/${table}.sql.gz"
                         sql_file="$(file.get_relative_path "${MYSQL_DATA_DIR}" "${sql_file}")"
                         data_file="${previous_backup_dir}/${table}.txt.gz"
                         data_file="$(file.get_relative_path "${MYSQL_DATA_DIR}" "${data_file}")"
                         # http://dev.mysql.com/doc/refman/5.0/en/load-data.html
-                        fifo="${table}.txt"
-                        rm -f "${fifo}"
-                        mkfifo "${fifo}"
+                        table_fifo="${database}.${table}.txt"
+                        global_fifo="${database}.${table}.txt2"
+                        rm -f "${table_fifo}" "${global_fifo}"
+                        mkfifo "${table_fifo}" "${global_fifo}"
+                        # We do this rather complicated because LOAD DATA INFILE is non-blocking and
+                        # we want everything correctly counted by pv, too.
                         {
                             cat "${prepare_sql_file}"
                             zcat "${sql_file}"
-                            echo "SELECT '${table}: Restored structure';"
 
-                            gunzip -c "${data_file}" > "${fifo}" &
-                            # This is non-blocking, therefore we remove the fifo later on.
-                            echo "LOAD DATA INFILE './${fifo}' INTO TABLE ${table} CHARACTER SET UTF8;"
-                            echo "SELECT '${table}: Restored data';"
-
-                            echo "FLUSH TABLES ${table} WITH READ LOCK;"
-                            echo "SELECT '${table}: Flushed to disk';"
+                            (
+                                gunzip -c "${data_file}" \
+                                    | tee "${table_fifo}" \
+                                    > "${global_fifo}" \
+                            ) &
+                            # This is non-blocking, therefore we remove the table_fifo later on.
+                            echo "LOAD DATA INFILE './${table_fifo}' INTO TABLE ${table} CHARACTER SET UTF8;"
                         } \
-                            | mysql ${MYSQL_CONNECTION_PARAMS} "${database}" -N
-                        # Finally remove the fifo after the database is really done.
-                        rm "${fifo}"
-                        # Restore timestamps for all table files to the lastest of the backup.
-                        local stamp=$(date --date="@${old_timestamp}" +"%Y%m%d%H%M.%S")
-                        ( sleep 1; touch -t "${stamp}" "${database}/${table}."* ) &
+                            > >(
+                                tee -a \
+                                >(mysql ${MYSQL_CONNECTION_PARAMS} "${database}" -N)
+                            )
+                        cat "${global_fifo}"
+                        wait
+                        # Remove the table_fifo after the database is really done.
+                        rm "${table_fifo}" "${global_fifo}"
                     done \
-                        | pv --name "Restoring tables" --size $((${#changed_tables[@]} * 3)) --line-mode --timer --eta --progress --cursor > /dev/null
+                        | pv --name "Restoring tables" --size ${changed_bytes} > /dev/null
+                    wait
+                    # Flush everything to disk.
+                    mysql ${MYSQL_CONNECTION_PARAMS} "${database}" -e "FLUSH TABLES ${table} WITH READ LOCK;"
+                    sleep 1
+                    popd > /dev/null
+
+                    # Finally restore timestamps for all table files to the lastest of the backup.
+                    local stamp=$(date --date="@${old_timestamp}" +"%Y%m%d%H%M.%S")
+                    pushd "${MYSQL_DATA_DIR}" > /dev/null
+                    for table in "${changed_tables[@]}"; do
+                        touch -t "${stamp}" "${database}/${table}."*
+                        echo
+                    done \
+                        | pv --name "Restoring timestamps" --size ${#changed_tables[@]} --line-mode --timer --eta --progress > /dev/null
                     popd > /dev/null
                 else
                     echo "Nothing changed."
