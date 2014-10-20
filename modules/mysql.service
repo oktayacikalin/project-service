@@ -424,7 +424,7 @@ function main () {
         ;;
 
         'watch')
-            watch -n1 "mysql ${MYSQL_CONNECTION_PARAMS} information_schema --skip-column-names --execute 'SELECT DB, STATE, TIME, PROGRESS, INFO FROM PROCESSLIST WHERE DB != \"information_schema\";'"
+            watch -n1 "mysql ${MYSQL_CONNECTION_PARAMS} information_schema --skip-column-names --execute 'SELECT DB, ID, STATE, TIME, PROGRESS, INFO FROM PROCESSLIST WHERE DB != \"information_schema\";'; echo; ps -x -o pid,pcpu,command -ww | grep -e 'mysql' | grep '$BASE_DIR' | grep -vE '($$|$BASHPID|grep \-e|watch)' | sed 's!$BASE_DIR!\$BASE_DIR!g'"
         ;;
 
         'NOOP')
