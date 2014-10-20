@@ -5,14 +5,11 @@
 # @license   MIT (LICENSE.txt)
 
 function gzip.get_uncompressed_size () {
-    local sizes=($(gzip --list --quiet "$@" | {
+    gzip --list --quiet "$@" | {
+        local size=0
         while read compressed uncompressed ratio filename; do
-            echo $uncompressed
+            size=$((${size} + ${uncompressed}))
         done
-    }))
-    local size=0
-    for bytes in "${sizes[@]}"; do
-        size=$(($size + $bytes))
-    done
-    echo $size
+        echo ${size}
+    }
 }
