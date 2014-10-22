@@ -83,6 +83,8 @@ function handle_command () {
     case "$command" in
         'tail')
             local log_files=()
+
+            # First try to gather all requested log file candidates.
             for service in ${AFFECTED_SERVICES[@]}; do
                 local log_dir=$(service.get_log_dir "$service")
                 if [ "$log_dir" ]; then
@@ -95,7 +97,28 @@ function handle_command () {
                     log_files+=("$log_file")
                 fi
             done
-            tail -F -n0 ${log_files[@]}
+
+            # Now, if the user has given some filters, narrow the results down.
+            if [ ${#params[@]} != 0 ]; then
+                local log_file
+                local index
+                shopt -s nocasematch
+                for filter in "${params[@]}"; do
+                    for index in "${!log_files[@]}"; do
+                        log_file="${log_files[$index]}"
+                        if ! [[ "${log_file}" =~ "${filter}" ]]; then
+                            unset log_files[$index]
+                        fi
+                    done
+                done
+            fi
+
+            # And finally do the tail.
+            if [ ${#log_files[@]} != 0 ]; then
+                tail -F -n0 "${log_files[@]}"
+            else
+                echo "Nothing to tail."
+            fi
         ;;
 
         'enable-service')
