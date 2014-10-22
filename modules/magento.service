@@ -82,6 +82,12 @@ function main () {
             popd > /dev/null
         ;;
 
+        'run-cronjob')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            magerun sys:cron:run "${@:2}"
+            popd > /dev/null
+        ;;
+
         'run-cronjobs')
             pushd "${MAGENTO_HOME}" > /dev/null
             php $MAGENTO_CRON_PHP
@@ -99,6 +105,20 @@ function main () {
             pushd "${MAGENTO_HOME}" > /dev/null
             echo  # Put the prompt into a new line.
             magerun "${@:2}"
+            popd > /dev/null
+        ;;
+
+        'config-get')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            echo  # Put the prompt into a new line.
+            magerun config:get "${@:2}"
+            popd > /dev/null
+        ;;
+
+        'config-set')
+            pushd "${MAGENTO_HOME}" > /dev/null
+            echo  # Put the prompt into a new line.
+            magerun config:set "${@:2}"
             popd > /dev/null
         ;;
 
