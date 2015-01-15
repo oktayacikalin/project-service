@@ -1,5 +1,7 @@
 # Project Service #
 
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/theblacklion/project-service?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 ### What is this repository for? ###
 
 The Project Service is a micro framework for managing local sandboxed project environments in a users account. The idea is to completely work in the userspace and that projects should not interfere with each other (e.g. no shared database server).
