@@ -18,13 +18,17 @@ SECTION_INDICATOR = r'\n--\n-- (?P<description>[^\n]+)\n--\n'
 SECTION_DATABASE = r'Current Database: `(?P<name>[^`]+)`'
 SECTION_TABLE_STRUCTURE = r'Table structure for table `(?P<name>[^`]+)`'
 SECTION_TABLE_DATA = r'Dumping data for table `(?P<name>[^`]+)`'
-SECTION_INDICATOR_FOOTER = r'UNLOCK TABLES;\n\/\*\!'
+SECTION_TEMP_VIEW = r'Temporary table structure for view `(?P<name>[^`]+)`'
+SECTION_FINAL_VIEW = r'Final view structure for view `(?P<name>[^`]+)`'
+# SECTION_INDICATOR_FOOTER = r'UNLOCK TABLES;\n\/\*\!'
 
 SECTION_TYPE_HEADER = 1
 SECTION_TYPE_DATABASE = 2
 SECTION_TYPE_TABLE_STRUCTURE = 3
 SECTION_TYPE_TABLE_DATA = 4
-SECTION_TYPE_FOOTER = 5
+SECTION_TYPE_TEMP_VIEW = 5
+SECTION_TYPE_FINAL_VIEW = 6
+SECTION_TYPE_FOOTER = 90
 SECTION_TYPE_UNKNOWN = 99
 
 
@@ -32,6 +36,8 @@ def write_data_to_disk(file, section_type, section_name, data, excludes):
     stype = (
         'database' if section_type == SECTION_TYPE_DATABASE else
         'structure' if section_type == SECTION_TYPE_TABLE_STRUCTURE else
+        'temp_view' if section_type == SECTION_TYPE_TEMP_VIEW else
+        'final_view' if section_type == SECTION_TYPE_FINAL_VIEW else
         'data' if section_type != SECTION_TYPE_UNKNOWN else
         None
     )
@@ -63,7 +69,9 @@ def main(source_file, excludes):
     regex_database = re.compile(SECTION_DATABASE, re.I | re.M)
     regex_table_structure = re.compile(SECTION_TABLE_STRUCTURE, re.I | re.M)
     regex_table_data = re.compile(SECTION_TABLE_DATA, re.I | re.M)
-    regex_footer = re.compile(SECTION_INDICATOR_FOOTER, re.I | re.M)
+    regex_temp_view = re.compile(SECTION_TEMP_VIEW, re.I | re.M)
+    regex_final_view = re.compile(SECTION_FINAL_VIEW, re.I | re.M)
+    # regex_footer = re.compile(SECTION_INDICATOR_FOOTER, re.I | re.M)
 
     cur_section_type = SECTION_TYPE_HEADER
     cur_section_name = 'header'
@@ -119,6 +127,8 @@ def main(source_file, excludes):
             database_result = regex_database.search(description)
             structure_result = regex_table_structure.search(description)
             data_result = regex_table_data.search(description)
+            temp_view_result = regex_temp_view.search(description)
+            final_view_result = regex_final_view.search(description)
 
             if database_result:
                 cur_section_name = database_result.group('name')
@@ -129,6 +139,12 @@ def main(source_file, excludes):
             elif data_result:
                 cur_section_name = data_result.group('name')
                 cur_section_type = SECTION_TYPE_TABLE_DATA
+            elif temp_view_result:
+                cur_section_name = temp_view_result.group('name')
+                cur_section_type = SECTION_TYPE_TEMP_VIEW
+            elif final_view_result:
+                cur_section_name = final_view_result.group('name')
+                cur_section_type = SECTION_TYPE_FINAL_VIEW
             else:
                 # raise Exception('Unknown section type: %s' % description)
                 print('Unknown section type: %s' % description)
