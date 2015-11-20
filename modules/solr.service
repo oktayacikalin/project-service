@@ -72,7 +72,7 @@ function install_package () {
             exit 1
         fi
     elif [ "${SOLR_LINK_MODE}" == "none" ]; then
-        pass
+        echo -n "Skipping configuration. "
     else
         echo "ERROR: Invalid link mode. Has to be one of: none, symlink, copy"
         exit 1
