@@ -16,6 +16,7 @@ import "etc/default/magento"
 
 SERVICE_LOG_DIR="${MAGENTO_HOME}/var/log"
 
+
 function main () {
     case "$COMMAND" in
         'clear-cache')
@@ -64,14 +65,24 @@ function main () {
             # TODO try to track the time and reuse it on next run.
             pushd "${MAGENTO_HOME}" > /dev/null
             echo  # Put the prompt into a new line.
-            local indexers=($(
-                for indexer in "$(php $MAGENTO_SHELL_INDEXER info)"; do
-                    cut -d' ' -f1 <<< "$indexer";
-                done
-            ))
-            echo "Got ${#indexers[@]} indexers..."
-            php $MAGENTO_SHELL_INDEXER reindexall \
-                | pv --size ${#indexers[@]} --line-mode --progress --timer --eta --bytes
+            local indexers="${@:2}"
+            if [ -z "${indexers[@]}" ]; then
+                indexers=($(
+                    for indexer in "$(php $MAGENTO_SHELL_INDEXER info)"; do
+                        cut -d' ' -f1 <<< "$indexer";
+                    done
+                ))
+                echo "Got ${#indexers[@]} indexers..."
+                php $MAGENTO_SHELL_INDEXER reindexall \
+                    | pv --size ${#indexers[@]} --line-mode --progress --timer --eta --bytes
+            else
+                indexers=(${indexers//,/ })
+                echo "Got ${#indexers[@]} indexers..."
+                for indexer in "${indexers[@]}"; do
+                    php $MAGENTO_SHELL_INDEXER --reindex "${indexer}"
+                done \
+                    | pv --size ${#indexers[@]} --line-mode --progress --timer --eta --bytes
+            fi
             popd > /dev/null
         ;;
 
@@ -150,6 +161,18 @@ function main () {
         # "UPDATE core_config_data SET value='0' WHERE path='dev/css/merge_css_files';"
         # enable-template-hints, disable-template-hints
         # enable-logging, disable-logging
+
+        # 'warmup-category-pages')
+        #     echo "Warming up category pages..."
+        #     TODO
+        #     CAT_URLS=$(mysql -h $LOCAL_DB_HOST $LOCAL_DB_PASS -u $LOCAL_DB_USER $DB_NAME -s -N -e "SELECT CONCAT(d.value,identifier) FROM enterprise_url_rewrite u LEFT JOIN core_config_data d ON d.path ='web/unsecure/base_url' AND d.scope='default' WHERE entity_type = 2");
+        #     wget -d --header="Cache-Control: no-cache" -d --header="Cookie: frontend=DEFAULT-XXX" -o /dev/null -q -O /dev/null $CAT_URLS > /dev/null 2>&1;
+        # ;;
+
+        # 'warmup-product-pages')
+        #     TODO see spider.sh
+        # ;;
+
 
         'NOOP')
             # NOOP
