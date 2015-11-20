@@ -299,21 +299,30 @@ function main () {
                         for table in "${unchanged_tables[@]}"; do
                             echo "${table} "
                             ln ../${previous_backup_dir##*/}/${table}.* .
-                        done | pv --name "Linking tables" --size ${#unchanged_tables[@]} --line-mode --timer --eta --progress --cursor > /dev/null
+                        done \
+                        | pv --name "Linking tables" --size ${#unchanged_tables[@]} \
+                             --line-mode --timer --eta --progress --cursor > /dev/null
                         popd > /dev/null
                     fi
 
                     # Now dump all changed_tables.
-                    for table in "${changed_tables[@]}"; do
-                        mysqldump ${MYSQL_CONNECTION_PARAMS} -T "${backup_dir}" "${database}" "${table}"
-                        echo "${table}: Backed up"
-                        gzip "${backup_dir}/${table}."*
-                        echo "${table}: Compressed files"
-                    done | pv --name "Backing up tables" --size $((${#changed_tables[@]} * 2)) --line-mode --timer --eta --progress --cursor > /dev/null
+                    echo "${changed_tables[@]}" | xargs -n 1 -P 4 $0 -backup "${backup_dir}" "${database}" \
+                        | pv --name "Backing up tables" --size $((${#changed_tables[@]} * 2)) \
+                             --line-mode --timer --eta --progress --cursor > /dev/null
                 else
                     echo "Nothing changed."
                 fi
             done
+        ;;
+
+        '-backup')
+            local backup_dir="$2"
+            local database="$3"
+            local table="$4"
+            mysqldump ${MYSQL_CONNECTION_PARAMS} -T "${backup_dir}" "${database}" "${table}"
+            echo "${table}: Backed up"
+            gzip "${backup_dir}/${table}."*
+            echo "${table}: Compressed files"
         ;;
 
         'restore')
@@ -446,6 +455,7 @@ function main () {
                     # Flush everything to disk.
                     mysql ${MYSQL_CONNECTION_PARAMS} "${database}" -e "FLUSH TABLES ${table} WITH READ LOCK;"
                     sleep 1
+                    # TODO Make sure that it has been written. There still seems to be files written to afterwards. Looks like we should wait for MySQL somehow...
                     popd > /dev/null
 
                     # Finally restore timestamps for all table files to the lastest of the backup.
