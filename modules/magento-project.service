@@ -75,7 +75,7 @@ function import_dump_files () {
             local name=$(get_label_of_filename "${file}")
             pv --name "${name}" "${file}" --interval 2 \
                 | gunzip \
-                | sed 's/DEFINER[ ]*=[ ]*[^*]*\*/\*/g' \
+                | sed -r 's/DEFINER[ \t]*=[^@]+@[^ ]+ //g' \
                 | sed 's/ENGINE=InnoDB/ENGINE=InndoDB ROW_FORMAT=COMPRESSED/g'
         done \
             | pv --name "Overall" --size ${size} --interval 5
