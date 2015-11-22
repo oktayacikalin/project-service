@@ -30,10 +30,6 @@ function magento.gen_config_sql_statements () {
         $(update_config "web/secure/base_skin_url" "{{secure_base_url}}skin/" default)
         $(update_config "web/secure/base_media_url" "{{secure_base_url}}media/" default)
 
-        # Password lifetime
-        $(update_config "admin/security/password_lifetime" "365")
-        $(update_config "admin/security/password_is_forced" 0)
-
         # Logging
         $(update_config "dev/log/active" "1")
         $(update_config "dev/log/file" "system.log")
@@ -46,6 +42,13 @@ function magento.gen_config_sql_statements () {
 
         # Reset indexer status
         "UPDATE index_process SET status='pending';"
+
+        # Admin password lifetime
+        $(update_config "admin/security/password_lifetime" "365")
+        $(update_config "admin/security/password_is_forced" 0)
+        
+        # Admin session lifetime
+        $(update_config "admin/security/session_cookie_lifetime", "99999")
 
         # Reset admin user passwords
         "UPDATE admin_user SET password=md5('${MP_ANON_ADMIN_PASSWORD}');"
