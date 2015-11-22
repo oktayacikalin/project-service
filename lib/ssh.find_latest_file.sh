@@ -15,6 +15,6 @@ function ssh.find_latest_file () {
     while IFS= read -r -d '' line; do
       t=${line%% *} t=${t%.*}   # truncate fractional seconds
       ((t > time)) && { latest=${line#* } time=$t; }
-    done < <(ssh.remote_cmd "${user}" "${host}" ${port} "find '${remote_dir}' -iname '${remote_file}' -type f -printf '%T@ %p\0'")
+    done < <(ssh.remote_cmd "${user}" "${host}" ${port} "find '${remote_dir}/' -iname '${remote_file}' -type f -printf '%T@ %p\0'")
     echo "${latest}"
 }
