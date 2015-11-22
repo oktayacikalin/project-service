@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Service control script for managing stuff around memcached.
+#
+# @author    Oktay Acikalin <oktay.acikalin@gmail.com>
+# @copyright Oktay Acikalin
+# @license   MIT (LICENSE.txt)
+
+[ -z "$SERVICE_DIR" ] && SERVICE_DIR=$(readlink -f $(dirname $0))
+[ -z "$BASE_DIR" ] && source "${SERVICE_DIR}/service.conf"
+
+import "lib/service.run_main"
+import "lib/var.default"
+
+import "etc/default/memcached"
+
+SERVICE_LOG_DIR="${LOG_DIR}"
+
+
+function main () {
+    case "$COMMAND" in
+        'disable-init-script')
+            sudo sh -c 'echo "manual" > /etc/init/memcached.override'
+        ;;
+
+        'enable-init-script')
+            sudo rm '/etc/init/memcached.override'
+        ;;
+
+        # TODO Implement all methods.
+
+        'NOOP')
+            # NOOP
+        ;;
+    esac
+}
+
+
+service.run_main "$@"
