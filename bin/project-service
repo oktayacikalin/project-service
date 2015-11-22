@@ -188,6 +188,10 @@ else
     params=()
 fi
 
+if [ ${#actions[@]} == 0 ]; then
+    actions=(help)
+fi
+
 for action in ${actions[@]}; do
     action=(${action//:/ })
     commands=(${action[0]//,/ })
