@@ -122,6 +122,13 @@ function main () {
                               "${latest}" "${DUMP_FILE}" \
                               || exit $?
             basename "${latest}" > "${DUMP_FILE_FILENAME_FILE}"
+
+            if [ "${latest##*.}" != "gz" ] && [ "${latest##*.}" != "bz2" ]; then
+                echo  # Put the prompt into a new line.
+                mv "${DUMP_FILE}" "${DUMP_FILE%.*}" \
+                    && pv --name "Compressing" "${DUMP_FILE%.*}" | gzip > "${DUMP_FILE}" \
+                    && rm "${DUMP_FILE%.*}"
+            fi
         ;;
 
         # Splits and strips the dump in one go.
