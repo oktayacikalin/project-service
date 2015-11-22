@@ -115,7 +115,7 @@ function handle_command () {
 
             # And finally do the tail.
             if [ ${#log_files[@]} != 0 ]; then
-                tail -F -n0 "${log_files[@]}"
+                grc tail -F -n0 "${log_files[@]}"
             else
                 echo "Nothing to tail."
             fi
