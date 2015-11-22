@@ -107,6 +107,10 @@ server {
         fastcgi_param {{key}} "{{value}}";
         {{/additional_fastcgi_params}}
 
+        {{#additional_fastcgi_expressions}}
+        fastcgi_param {{key}} {{value}};
+        {{/additional_fastcgi_expressions}}
+
         fastcgi_pass unix:{{project_root}}/var/run/php5-fpm.sock;
         fastcgi_index index.php;
     }
