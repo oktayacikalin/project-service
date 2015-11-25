@@ -48,6 +48,16 @@ function fill () {
 [ -e "${MYSQL_CONF}" ] || fill "$(cat ${ETC_DIR}/mysql/mysql.conf)" > ${MYSQL_CONF}
 [ -e "${MYSQL_ADMIN_CONF}" ] || fill "$(cat ${ETC_DIR}/mysql/mysql-admin.conf)" > ${MYSQL_ADMIN_CONF}
 
+function ensure_user_rights () {
+    local MYSQL_HOST_IP=$(host "${MYSQL_HOST}" | tail -n1 | cut -d' ' -f4)
+    mysqladmin --defaults-file="${MYSQL_CONF}" -u "${MYSQL_USER}" password "${MYSQL_PASS}"
+    # mysqladmin --defaults-file="${MYSQL_CONF}" -h localhost -u "${MYSQL_USER}" password "${MYSQL_PASS}"
+    SQL="
+    GRANT ALL ON *.* TO '${MYSQL_USER}'@'${MYSQL_HOST_IP}' IDENTIFIED BY '${MYSQL_PASS}';
+    "
+    mysql ${MYSQL_CONNECTION_PARAMS} -e "${SQL}"
+}
+
 function ensure_innodb_barracuda_config () {
     [ -e "${ETC_DIR}/mysql/conf.d/innodb_barracuda_format.cnf" ] || {
         echo -n ' Adding symlink for using InnoDB Barracuda format... '
@@ -129,10 +139,9 @@ function main () {
         ;;
 
         'install')
-            mysql_install_db --defaults-file="${MYSQL_CONF}"
-            $0 start
-            mysqladmin --defaults-file="${MYSQL_CONF}" -u "${MYSQL_USER}" password "${MYSQL_PASS}"
-            # mysqladmin --defaults-file="${MYSQL_CONF}" -h localhost -u "${MYSQL_USER}" password "${MYSQL_PASS}"
+            mysql_install_db --defaults-file="${MYSQL_CONF}" && \
+                $0 start && \
+                ensure_user_rights
         ;;
 
         'reconfigure')
