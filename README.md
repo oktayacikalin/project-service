@@ -13,6 +13,8 @@ The developer can start all required services on demand and shut them down if no
 * Summary of set up
 * Configuration
 * Dependencies
+** grc
+** pcregrep
 * Database configuration
 * How to run tests
 * Deployment instructions
