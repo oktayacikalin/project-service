@@ -62,7 +62,9 @@ var.default MP_ANON_CUSTOMER_PASSWORD "password"
 var.default MP_ANON_ADMIN_USERNAME "admin"
 var.default MP_ANON_ADMIN_PASSWORD "password"
 
-var.default MP_BASE_DOMAIN_IP $(grep "${BASE_DOMAIN}" ${ETC_DIR}/dnsmasq/hosts | cut -d' ' -f1)
+# Get the IP via host command.
+# var.default MP_BASE_DOMAIN_IP $(grep "${BASE_DOMAIN}" ${ETC_DIR}/dnsmasq/hosts | cut -d' ' -f1)
+var.default MP_BASE_DOMAIN_IP $(host "${BASE_DOMAIN}" | tail -n1 | cut -d' ' -f4)
 
 # See magento.service for possible reindex-* commands.
 var.default MP_REINDEX_MODE "reindex-search"
