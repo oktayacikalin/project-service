@@ -5,6 +5,8 @@
 # @license   MIT (LICENSE.txt)
 
 domains: ["phpinfo.project.ld"]
+listeners: [80]
+
 project_root: "/home/user/projects/project"
 web_root: "phpinfo"
 log_identifier: "phpinfo"

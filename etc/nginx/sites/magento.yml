@@ -5,6 +5,8 @@
 # @license   MIT (LICENSE.txt)
 
 domains: ["project.ld", "de.project.ld", "en.project.ld", "admin.project.ld"]
+listeners: [80, "443 ssl spdy"]
+
 project_root: "/home/user/projects/project"
 web_root: "magento"
 

@@ -21,8 +21,9 @@ map $http_host $country_code {
 {{/use_country_code_mapping}}
 
 server {
-    listen {{domains.first}}:81;
-    listen {{domains.first}}:443 ssl spdy;
+    {{#listeners}}
+    listen {{domains.first}}:{{.}};
+    {{/listeners}}
     server_name{{#domains}} {{.}}{{/domains}};
 
     ssl_certificate     {{project_root}}/etc/ssl/server.crt;
