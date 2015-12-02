@@ -64,7 +64,7 @@ server {
         rewrite / /index.php;
     }
 
-    location ~ .php/ {
+    location ~ \.php/ {
         rewrite ^(.*.php)/ $1 last;
     }
 
