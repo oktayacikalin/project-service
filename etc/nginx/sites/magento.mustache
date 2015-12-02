@@ -112,5 +112,9 @@ server {
 
         fastcgi_pass unix:{{project_root}}/var/run/php5-fpm.sock;
         fastcgi_index index.php;
+
+        {{#host_restrictions}}
+        {{key}} {{value}};
+        {{/host_restrictions}}
     }
 }
