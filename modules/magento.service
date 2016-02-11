@@ -27,7 +27,8 @@ function main () {
 
         'clear-block-cache')
             pushd "${MAGENTO_HOME}" > /dev/null
-            magerun -q cache:clean block_html,translate,layout,full_page
+            magerun -q cache:clean block_html,translate,layout
+            magerun cache:list | grep full_page && magerun -q cache:clean full_page
             popd > /dev/null
         ;;
 
@@ -144,7 +145,8 @@ function main () {
             echo  # Put the prompt into a new line.
             magerun dev:template-hints
             magerun dev:template-hints-blocks
-            magerun cache:clean block_html,full_page
+            magerun cache:clean block_html
+            magerun cache:list | grep full_page && magerun cache:clean full_page
             popd > /dev/null
         ;;
 
